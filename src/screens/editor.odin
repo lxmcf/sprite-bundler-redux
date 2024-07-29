@@ -21,44 +21,66 @@ UpdateCamera :: proc() {
 	}
 
 	mouse_wheel := rl.GetMouseWheelMove()
-	if mouse_wheel != 0 {
+	if mouse_wheel != 0 && !rl.IsMouseButtonDown(.MIDDLE) {
 		mouse_world_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), editor_camera)
 
 		editor_camera.offset = rl.GetMousePosition()
 		editor_camera.target = mouse_world_position
 
 		scale_factor := 1 + (0.25 * abs(mouse_wheel))
-		if mouse_wheel < 0 {
-			scale_factor = 1.0 / scale_factor
-		}
+		if mouse_wheel < 0 do scale_factor = 1.0 / scale_factor
 
 		editor_camera.zoom = clamp(editor_camera.zoom * scale_factor, 0.125, 64)
 	}
 }
 
 @(private)
-SortTextureSize :: proc(a, b: core.Sprite) -> int {
+MassWidthSort :: proc(a, b: core.Sprite) -> bool {
 	mass_a := a.source.width * a.source.height
 	mass_b := b.source.width * b.source.height
 
 	if mass_a == mass_b {
-		if a.source.width == b.source.width {
-			if a.source.height > b.source.height do return -1
-			if b.source.height > a.source.height do return 1
+		if a.source.width < b.source.width do return false
+		if a.source.width > b.source.width do return true
 
-			return 0
-		} else {
-			if a.source.width > b.source.width do return -1
-			if b.source.width > a.source.width do return 1
-
-			return 0
-		}
-	} else {
-		if mass_a > mass_b do return -1
-		if mass_b > mass_a do return 1
+		if a.source.height < b.source.height do return false
+		if a.source.height > b.source.height do return true
 	}
 
-	return 0
+	return mass_a > mass_b
+}
+
+@(private)
+PackSprites :: proc(project: ^core.Project) {
+	slice.sort_by(project.sprites[:], MassWidthSort)
+
+	valignment, texture_placed := f32(project.atlas.size), 0
+
+	for sprite in project.sprites {
+		if sprite.source.height < valignment do valignment = sprite.source.height
+	}
+
+	for &sprite in project.sprites {
+		for j := 0; j < texture_placed; j += 1 {
+			current_rect := project.sprites[j].source
+
+			for rl.CheckCollisionRecs(sprite.source, current_rect) {
+				sprite.source.x += current_rect.width
+
+				within_x := int(sprite.source.x + sprite.source.width) <= project.atlas.size
+
+				if !within_x {
+					sprite.source.x = 0
+					sprite.source.y += valignment
+
+					j = 0
+				}
+			}
+		}
+		texture_placed += 1
+	}
+
+	rl.TraceLog(.INFO, "Sorted %d textures!", texture_placed)
 }
 
 InitEditor :: proc() {
@@ -88,6 +110,8 @@ UpdateEditor :: proc(project: ^core.Project) {
 
 				append(&project.sprites, sprite)
 			}
+
+			PackSprites(project)
 		} else {
 			rl.TraceLog(.ERROR, "FILE: Did not find any files to sort!")
 		}
@@ -100,10 +124,8 @@ DrawEditor :: proc(project: core.Project) {
 
 	rl.DrawRectangleRec({0, 0, f32(project.atlas.size), f32(project.atlas.size)}, rl.LIGHTGRAY)
 
-	position: rl.Vector2
-
 	for sprite in project.sprites {
-		rl.DrawTextureV(sprite.texture, position, rl.WHITE)
-		position += {f32(sprite.texture.width), 0}
+		rl.DrawTextureV(sprite.texture, {sprite.source.x, sprite.source.y}, rl.WHITE)
+		rl.DrawRectangleLinesEx(sprite.source, 1, rl.RED)
 	}
 }

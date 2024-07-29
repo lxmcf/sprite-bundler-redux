@@ -19,21 +19,17 @@ debug_show_fps: bool
 project: core.Project
 
 DebugDrawFPS :: proc() {
-	if ODIN_DEBUG {
-		DEBUG_FONT_SIZE :: 20
+	DEBUG_FONT_SIZE :: 20
 
-		if rl.IsKeyPressed(.GRAVE) {
-			debug_show_fps = !debug_show_fps
-		}
+	if rl.IsKeyPressed(.GRAVE) do debug_show_fps = !debug_show_fps
 
-		if debug_show_fps {
-			current_fps := rl.TextFormat("%d FPS", rl.GetFPS())
-			text_width := rl.MeasureText(current_fps, DEBUG_FONT_SIZE)
-			text_colour := rl.GetFPS() < FPS_MINIMUM ? rl.ORANGE : rl.GREEN
+	if debug_show_fps {
+		current_fps := rl.TextFormat("%d FPS", rl.GetFPS())
+		text_width := rl.MeasureText(current_fps, DEBUG_FONT_SIZE)
+		text_colour := rl.GetFPS() < FPS_MINIMUM ? rl.ORANGE : rl.GREEN
 
-			rl.DrawRectangle(0, 0, text_width + 16, 32, rl.Fade(rl.BLACK, 0.5))
-			rl.DrawText(current_fps, 8, 8, DEBUG_FONT_SIZE, text_colour)
-		}
+		rl.DrawRectangle(0, 0, text_width + 16, 32, rl.Fade(rl.BLACK, 0.5))
+		rl.DrawText(current_fps, 8, 8, DEBUG_FONT_SIZE, text_colour)
 	}
 }
 
@@ -42,13 +38,8 @@ main :: proc() {
 	mem.tracking_allocator_init(&track, context.allocator)
 	context.allocator = mem.tracking_allocator(&track)
 	defer {
-		for _, entry in track.allocation_map {
-			fmt.eprintf("%v leaked %v bytes\n", entry.location, entry.size)
-		}
-
-		for entry in track.bad_free_array {
-			fmt.eprintf("%v bad free\n", entry.location)
-		}
+		for _, entry in track.allocation_map do fmt.eprintf("%v leaked %v bytes\n", entry.location, entry.size)
+		for entry in track.bad_free_array do fmt.eprintf("%v bad free\n", entry.location)
 
 		mem.tracking_allocator_destroy(&track)
 	}
@@ -78,7 +69,7 @@ main :: proc() {
 		rl.ClearBackground(rl.DARKGRAY)
 		screens.DrawEditor(project)
 
-		DebugDrawFPS()
+		when ODIN_DEBUG do DebugDrawFPS()
 	}
 
 	free_all(context.temp_allocator)

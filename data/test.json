@@ -1,7 +1,7 @@
 {
     "name": "SCAV",
     "version": 1,
-    "atlas_size": 2048,
+    "atlas_size": 1024,
     "alignment": 16,
     "embed_files": false,
     "sprites": [
