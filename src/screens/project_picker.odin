@@ -2,10 +2,8 @@ package screens
 
 import rl "vendor:raylib"
 
-UpdateProjectPicker :: proc() {
+InitProjectPicker :: proc() {}
 
-}
+UpdateProjectPicker :: proc() {}
 
-DrawProjectPicker :: proc() {
-
-}
+DrawProjectPicker :: proc() {}

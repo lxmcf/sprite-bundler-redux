@@ -2,12 +2,13 @@ EXE := game
 CC := odin
 BUILD ?= DEBUG
 
-C_FLAGS := -microarch:native -collection:bundler=src
+C_FLAGS := -collection:bundler=src
 OPT := none
 
 ifeq ($(BUILD), DEBUG)
 	C_FLAGS += -debug
-else
+else ifeq ($(BUILD), RELEASE)
+	C_FLAGS += -microarch:native
 	OPT = speed
 endif
 

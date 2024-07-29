@@ -1,64 +1,83 @@
 package screens
 
-import "core:encoding/json"
-import "core:fmt"
 import "core:os"
+import "core:strings"
 
 import rl "vendor:raylib"
 
-import "bundler:common"
+import "bundler:core"
 
 @(private = "file")
-current_project: common.Project
-editor_camera: rl.Camera
+editor_camera: rl.Camera2D
 
-InitEditor :: proc(filename: string) {
-	data, ok := os.read_entire_file(filename)
-	if !ok {
-		rl.TraceLog(.ERROR, "FILE: Failed to load %s", filename)
-		return
+@(private)
+UpdateCamera :: proc() {
+	if rl.IsMouseButtonDown(.MIDDLE) {
+		delta := rl.GetMouseDelta()
+
+		delta *= -1.0 / editor_camera.zoom
+		editor_camera.target += delta
 	}
-	defer delete(data)
 
-	json_data, err := json.parse(data)
-	if err != .None {
-		error_name := fmt.tprint(err)
-		rl.TraceLog(.ERROR, "Failed to parse json: %s", error_name)
+	mouse_wheel := rl.GetMouseWheelMove()
+	if mouse_wheel != 0 {
+		mouse_world_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), editor_camera)
 
-		return
-	}
-	defer json.destroy_value(json_data)
+		editor_camera.offset = rl.GetMousePosition()
+		editor_camera.target = mouse_world_position
 
-	root := json_data.(json.Object)
+		scale_factor := 1 + (0.25 * abs(mouse_wheel))
+		if mouse_wheel < 0 {
+			scale_factor = 1.0 / scale_factor
+		}
 
-	for element in root["sprites"].(json.Array) {
-		sprite := element.(json.Object)
-
-		new_sprite: common.Sprite
-		new_sprite.name, _ = json.clone_string(sprite["name"].(json.String), context.allocator)
-
-		append(&current_project.sprites, new_sprite)
+		editor_camera.zoom = clamp(editor_camera.zoom * scale_factor, 0.125, 64)
 	}
 }
 
-UpdateEditor :: proc() {
-
+InitEditor :: proc() {
+	editor_camera.zoom = 0.5
 }
 
-DrawEditor :: proc() {
+UpdateEditor :: proc(project: ^core.Project) {
+	UpdateCamera()
 
-}
+	if rl.IsFileDropped() {
+		files := rl.LoadDroppedFiles()
+		defer rl.UnloadDroppedFiles(files)
 
-UnloadEditor :: proc() {
-	for sprite, index in current_project.sprites {
-		rl.UnloadTexture(sprite.texture)
-		delete(sprite.name)
+		if files.count > 0 {
+			for i in 0 ..< files.count {
+				path := files.paths[i]
+				if !rl.IsFileExtension(path, ".png") do continue
+
+				texture := rl.LoadTexture(path)
+
+				sprite: core.Sprite = {
+					name    = strings.clone_from_cstring(rl.GetFileName(path)),
+					file    = strings.clone_from_cstring(path),
+					texture = texture,
+					source  = {0, 0, f32(texture.width), f32(texture.height)},
+				}
+
+				append(&project.sprites, sprite)
+			}
+		} else {
+			rl.TraceLog(.ERROR, "FILE: Did not find any files to sort!")
+		}
 	}
-
-	delete(current_project.sprites)
 }
 
-@(private = "file")
-SaveProject :: proc() {
+DrawEditor :: proc(project: core.Project) {
+	rl.BeginMode2D(editor_camera)
+	defer rl.EndMode2D()
 
+	rl.DrawRectangleRec({0, 0, f32(project.atlas.size), f32(project.atlas.size)}, rl.LIGHTGRAY)
+
+	position: rl.Vector2
+
+	for sprite in project.sprites {
+		rl.DrawTextureV(sprite.texture, position, rl.WHITE)
+		position += {f32(sprite.texture.width), 0}
+	}
 }
