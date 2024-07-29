@@ -13,7 +13,7 @@ editor_camera: rl.Camera2D
 
 @(private)
 UpdateCamera :: proc() {
-	if rl.IsMouseButtonDown(.MIDDLE) {
+	if rl.IsMouseButtonDown(.MIDDLE) || rl.IsKeyDown(.LEFT_ALT) {
 		delta := rl.GetMouseDelta()
 
 		delta *= -1.0 / editor_camera.zoom
@@ -99,7 +99,7 @@ UpdateEditor :: proc(project: ^core.Project) {
 				path := files.paths[i]
 				if !rl.IsFileExtension(path, ".png") do continue
 
-				texture := rl.LoadTexture(path)
+				texture := rl.LoadImage(path)
 
 				sprite: core.Sprite = {
 					name    = strings.clone_from_cstring(rl.GetFileName(path)),
@@ -112,6 +112,21 @@ UpdateEditor :: proc(project: ^core.Project) {
 			}
 
 			PackSprites(project)
+
+			rl.ImageClearBackground(&project.atlas.foreground_image, rl.BLANK)
+
+			for sprite in project.sprites {
+				rl.ImageDraw(
+					&project.atlas.foreground_image,
+					sprite.texture,
+					{0, 0, sprite.source.width, sprite.source.height},
+					sprite.source,
+					rl.WHITE,
+				)
+			}
+
+			rl.UnloadTexture(project.atlas.foreground_texture)
+			project.atlas.foreground_texture = rl.LoadTextureFromImage(project.atlas.foreground_image)
 		} else {
 			rl.TraceLog(.ERROR, "FILE: Did not find any files to sort!")
 		}
@@ -122,10 +137,11 @@ DrawEditor :: proc(project: core.Project) {
 	rl.BeginMode2D(editor_camera)
 	defer rl.EndMode2D()
 
-	rl.DrawRectangleRec({0, 0, f32(project.atlas.size), f32(project.atlas.size)}, rl.LIGHTGRAY)
+	rl.DrawTextureV(project.atlas.background_texture, {}, rl.WHITE)
+	rl.DrawTextureV(project.atlas.foreground_texture, {}, rl.WHITE)
 
-	for sprite in project.sprites {
-		rl.DrawTextureV(sprite.texture, {sprite.source.x, sprite.source.y}, rl.WHITE)
-		rl.DrawRectangleLinesEx(sprite.source, 1, rl.RED)
-	}
+	// for sprite in project.sprites {
+	// 	rl.DrawTextureV(sprite.texture, {sprite.source.x, sprite.source.y}, rl.WHITE)
+	// 	rl.DrawRectangleLinesEx(sprite.source, 1, rl.RED)
+	// }
 }

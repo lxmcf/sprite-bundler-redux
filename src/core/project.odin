@@ -9,7 +9,7 @@ import rl "vendor:raylib"
 Sprite :: struct {
 	name:      string,
 	file:      string,
-	texture:   rl.Texture,
+	texture:   rl.Image,
 	source:    rl.Rectangle,
 	origin:    rl.Vector2,
 	animation: struct {
@@ -23,9 +23,10 @@ Project :: struct {
 	name:    string,
 	sprites: [dynamic]Sprite,
 	atlas:   struct {
-		size:    int,
-		texture: rl.Texture2D,
-		image:   rl.Image,
+		size:               int,
+		background_texture: rl.Texture2D,
+		foreground_texture: rl.Texture2D,
+		foreground_image:   rl.Image,
 	},
 	config:  struct {
 		embed_files: bool,
@@ -60,10 +61,25 @@ LoadProject :: proc(filename: string) -> (Project, Error) {
 
 	root := json_data.(json.Object)
 
-	new_project.name, _ = json.clone_string(root["name"].(json.String), context.allocator)
-	new_project.atlas.size = int(root["atlas_size"].(json.Float))
+	atlas_size := i32(root["atlas_size"].(json.Float))
 
-	rl.TraceLog(.INFO, "Atlas size: %d", new_project.atlas.size)
+	new_project.name, _ = json.clone_string(root["name"].(json.String), context.allocator)
+	new_project.atlas.size = int(atlas_size)
+
+	background_image := rl.GenImageChecked(
+		atlas_size,
+		atlas_size,
+		atlas_size / 32,
+		atlas_size / 32,
+		rl.LIGHTGRAY,
+		rl.GRAY,
+	)
+	defer rl.UnloadImage(background_image)
+
+	new_project.atlas.foreground_image = rl.GenImageColor(atlas_size, atlas_size, rl.BLANK)
+
+	new_project.atlas.background_texture = rl.LoadTextureFromImage(background_image)
+	new_project.atlas.foreground_texture = rl.LoadTextureFromImage(new_project.atlas.foreground_image)
 
 	return new_project, .None
 }
@@ -77,11 +93,13 @@ UnloadProject :: proc(project: ^Project) {
 		delete(sprite.name)
 		delete(sprite.file)
 
-		rl.UnloadTexture(sprite.texture)
+		rl.UnloadImage(sprite.texture)
 	}
 
-	rl.UnloadTexture(project.atlas.texture)
-	rl.UnloadImage(project.atlas.image)
+	rl.UnloadImage(project.atlas.foreground_image)
+
+	rl.UnloadTexture(project.atlas.background_texture)
+	rl.UnloadTexture(project.atlas.foreground_texture)
 
 	delete(project.sprites)
 }
