@@ -1,6 +1,7 @@
 package screens
 
 import "core:os"
+import "core:slice"
 import "core:strings"
 
 import rl "vendor:raylib"
@@ -33,6 +34,31 @@ UpdateCamera :: proc() {
 
 		editor_camera.zoom = clamp(editor_camera.zoom * scale_factor, 0.125, 64)
 	}
+}
+
+@(private)
+SortTextureSize :: proc(a, b: core.Sprite) -> int {
+	mass_a := a.source.width * a.source.height
+	mass_b := b.source.width * b.source.height
+
+	if mass_a == mass_b {
+		if a.source.width == b.source.width {
+			if a.source.height > b.source.height do return -1
+			if b.source.height > a.source.height do return 1
+
+			return 0
+		} else {
+			if a.source.width > b.source.width do return -1
+			if b.source.width > a.source.width do return 1
+
+			return 0
+		}
+	} else {
+		if mass_a > mass_b do return -1
+		if mass_b > mass_a do return 1
+	}
+
+	return 0
 }
 
 InitEditor :: proc() {
