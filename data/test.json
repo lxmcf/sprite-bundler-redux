@@ -1,0 +1,129 @@
+{
+    "name": "SCAV",
+    "version": 1,
+    "atlas_size": 2048,
+    "alignment": 16,
+    "embed_files": false,
+    "sprites": [
+        {
+            "name": "spaceStation_017",
+            "file": "",
+            "flags": 0,
+            "source": {
+                "x": 0,
+                "y": 0,
+                "width": 344,
+                "height": 577
+            },
+            "origin": {
+                "x": 172,
+                "y": 229
+            },
+            "animation": {
+                "speed": 0,
+                "frame_count": 0,
+                "frames": []
+            }
+        },
+        {
+            "name": "spaceMeteors_003",
+            "file": "",
+            "flags": 0,
+            "source": {
+                "x": 344,
+                "y": 0,
+                "width": 440,
+                "height": 442
+            },
+            "origin": {
+                "x": 223,
+                "y": 236
+            },
+            "animation": {
+                "speed": 0,
+                "frame_count": 0,
+                "frames": []
+            }
+        },
+        {
+            "name": "spaceMeteors_001",
+            "file": "",
+            "flags": 0,
+            "source": {
+                "x": 784,
+                "y": 0,
+                "width": 427,
+                "height": 454
+            },
+            "origin": {
+                "x": 222,
+                "y": 239
+            },
+            "animation": {
+                "speed": 0,
+                "frame_count": 0,
+                "frames": []
+            }
+        },
+        {
+            "name": "spaceMeteors_004",
+            "file": "",
+            "flags": 0,
+            "source": {
+                "x": 1211,
+                "y": 0,
+                "width": 423,
+                "height": 435
+            },
+            "origin": {
+                "x": 214,
+                "y": 221
+            },
+            "animation": {
+                "speed": 0,
+                "frame_count": 0,
+                "frames": []
+            }
+        },
+        {
+            "name": "spaceMeteors_002",
+            "file": "",
+            "flags": 0,
+            "source": {
+                "x": 344,
+                "y": 448,
+                "width": 431,
+                "height": 422
+            },
+            "origin": {
+                "x": 219,
+                "y": 223
+            },
+            "animation": {
+                "speed": 0,
+                "frame_count": 0,
+                "frames": []
+            }
+        },
+        {
+            "name": "spaceShips_008",
+            "file": "",
+            "flags": 0,
+            "source": {
+                "x": 1634,
+                "y": 0,
+                "width": 212,
+                "height": 160
+            },
+            "origin": {
+                "x": 106,
+                "y": 60
+            },
+            "animation": {
+                "speed": 0,
+                "frame_count": 0,
+                "frames": []
+            }
+        }
+    ]
+}
