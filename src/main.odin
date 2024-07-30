@@ -57,18 +57,18 @@ main :: proc() {
 	max_fps := rl.GetMonitorRefreshRate(rl.GetCurrentMonitor())
 	rl.SetTargetFPS(max_fps <= 0 ? FPS_MINIMUM : max_fps)
 
-	if project, err := core.CreateNewProject(TEST_PROJECT, 1024, false, false); err == .Project_Exists {
-		project_directory, project_file := core.GetProjectFilenames(TEST_PROJECT)
+	if !os.is_dir("projects") do os.make_directory("projects")
 
-		project, err = core.LoadProject(project_file)
-	}
+	project_directory, project_file := core.GetProjectFilenames(TEST_PROJECT)
+	defer delete(project_directory)
+	defer delete(project_file)
 
+	core.CreateNewProject(TEST_PROJECT, 1024, false, false)
+	project, err := core.LoadProject(project_file)
 	defer core.UnloadProject(&project)
 
 	screens.InitEditor()
 	defer screens.UnloadEditor()
-
-	if !os.is_dir("projects") do os.make_directory("projects")
 
 	for !rl.WindowShouldClose() {
 		screens.UpdateEditor(&project)

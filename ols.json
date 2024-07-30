@@ -5,6 +5,5 @@
             "name": "bundler",
             "path": "src"
         }
-    ],
-    "enable_checker_only_saved": false
+    ]
 }

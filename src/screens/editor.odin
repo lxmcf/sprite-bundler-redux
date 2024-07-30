@@ -7,6 +7,7 @@ import "core:strings"
 import rl "vendor:raylib"
 
 import "bundler:core"
+import "bundler:io"
 
 @(private = "file")
 editor_camera: rl.Camera2D
@@ -54,6 +55,33 @@ HandleShortcuts :: proc(project: ^core.Project) {
 		// Export Image
 		if rl.IsKeyPressed(.E) {
 			rl.ExportImage(project.atlas.foreground_image, "atlas.png")
+
+			when ODIN_DEBUG {
+				compressed_data_size, raw_data_size: i32
+
+				raw_data := rl.ExportImageToMemory(project.atlas.foreground_image, ".png", &raw_data_size)
+				compressed_data := rl.CompressData(raw_data, raw_data_size, &compressed_data_size)
+
+				handle, _ := io.OpenFile("test.dat", .WRITE)
+				defer io.CloseFile(handle)
+
+				os.write_string(handle, "LSPP")
+				os.write(handle, compressed_data[0:compressed_data_size])
+			}
+		}
+
+		// Import image
+		when ODIN_DEBUG {
+			if rl.IsKeyPressed(.R) {
+				handle, _ := io.OpenFile("test.dat", .READ)
+				defer io.CloseFile(handle)
+
+				header := make([]byte, 4, context.temp_allocator)
+
+				bytes_read, error := os.read(handle, header)
+
+				rl.TraceLog(.INFO, "Header Read: %s", header)
+			}
 		}
 	}
 }
@@ -108,7 +136,7 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 }
 
 @(private)
-MassWidthSort :: proc(a, b: core.Sprite) -> bool {
+MassWidthSort :: proc(a, b: core.Sprite) -> (greater: bool) {
 	mass_a := a.source.width * a.source.height
 	mass_b := b.source.width * b.source.height
 
