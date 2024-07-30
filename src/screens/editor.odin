@@ -48,7 +48,61 @@ HandleShortcuts :: proc(project: ^core.Project) {
 	if rl.IsKeyDown(.LEFT_CONTROL) {
 		// Save Project
 		if rl.IsKeyPressed(.S) {
-			core.WriteProject("output.json", project)
+			core.WriteProject(project)
+		}
+
+		// Export Image
+		if rl.IsKeyPressed(.E) {
+			rl.ExportImage(project.atlas.foreground_image, "atlas.png")
+		}
+	}
+}
+
+@(private)
+HandleDroppedFiles :: proc(project: ^core.Project) {
+	if rl.IsFileDropped() {
+		files := rl.LoadDroppedFiles()
+		defer rl.UnloadDroppedFiles(files)
+
+		if files.count > 0 {
+			for i in 0 ..< files.count {
+				path := files.paths[i]
+				if !rl.IsFileExtension(path, ".png") do continue
+
+				texture := rl.LoadImage(path)
+
+				sprite: core.Sprite = {
+					name    = strings.clone_from_cstring(rl.GetFileName(path)),
+					file    = strings.clone_from_cstring(path),
+					texture = texture,
+					source  = {0, 0, f32(texture.width), f32(texture.height)},
+				}
+
+				if project.config.auto_centre {
+					sprite.origin = {sprite.source.width, sprite.source.height} / 2
+				}
+
+				append(&project.sprites, sprite)
+			}
+
+			PackSprites(project)
+
+			rl.ImageClearBackground(&project.atlas.foreground_image, rl.BLANK)
+
+			for sprite in project.sprites {
+				rl.ImageDraw(
+					&project.atlas.foreground_image,
+					sprite.texture,
+					{0, 0, sprite.source.width, sprite.source.height},
+					sprite.source,
+					rl.WHITE,
+				)
+			}
+
+			rl.UnloadTexture(project.atlas.foreground_texture)
+			project.atlas.foreground_texture = rl.LoadTextureFromImage(project.atlas.foreground_image)
+		} else {
+			rl.TraceLog(.ERROR, "FILE: Did not find any files to sort!")
 		}
 	}
 }
@@ -107,50 +161,18 @@ InitEditor :: proc() {
 }
 
 UpdateEditor :: proc(project: ^core.Project) {
+	rl.SetMouseCursor(.DEFAULT)
 	UpdateCamera()
+
 	HandleShortcuts(project)
+	HandleDroppedFiles(project)
 
-	if rl.IsFileDropped() {
-		files := rl.LoadDroppedFiles()
-		defer rl.UnloadDroppedFiles(files)
+	mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), editor_camera)
 
-		if files.count > 0 {
-			for i in 0 ..< files.count {
-				path := files.paths[i]
-				if !rl.IsFileExtension(path, ".png") do continue
-
-				texture := rl.LoadImage(path)
-
-				sprite: core.Sprite = {
-					name    = strings.clone_from_cstring(rl.GetFileName(path)),
-					file    = strings.clone_from_cstring(path),
-					texture = texture,
-					source  = {0, 0, f32(texture.width), f32(texture.height)},
-				}
-
-				append(&project.sprites, sprite)
-			}
-
-			PackSprites(project)
-
-			rl.ImageClearBackground(&project.atlas.foreground_image, rl.BLANK)
-
-			for sprite in project.sprites {
-				rl.ImageDraw(
-					&project.atlas.foreground_image,
-					sprite.texture,
-					{0, 0, sprite.source.width, sprite.source.height},
-					sprite.source,
-					rl.WHITE,
-				)
-			}
-
-			rl.UnloadTexture(project.atlas.foreground_texture)
-			project.atlas.foreground_texture = rl.LoadTextureFromImage(project.atlas.foreground_image)
-
-
-		} else {
-			rl.TraceLog(.ERROR, "FILE: Did not find any files to sort!")
+	for sprite in project.sprites {
+		if rl.CheckCollisionPointRec(mouse_position, sprite.source) {
+			rl.SetMouseCursor(.POINTING_HAND)
+			break
 		}
 	}
 }
@@ -160,12 +182,20 @@ DrawEditor :: proc(project: core.Project) {
 	defer rl.EndMode2D()
 
 	rl.DrawTextureV(project.atlas.background_texture, {}, rl.WHITE)
-	rl.DrawTextureV(project.atlas.foreground_texture, {}, rl.WHITE)
+	// rl.DrawTextureV(project.atlas.foreground_texture, {}, rl.WHITE)
 
-	// for sprite in project.sprites {
-	// 	rl.DrawTextureV(sprite.texture, {sprite.source.x, sprite.source.y}, rl.WHITE)
-	// 	rl.DrawRectangleLinesEx(sprite.source, 1, rl.RED)
-	// }
+	for sprite in project.sprites {
+		rl.DrawTexturePro(project.atlas.foreground_texture, sprite.source, sprite.source, {}, 0, rl.WHITE)
+	}
+
+	mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), editor_camera)
+
+	for sprite in project.sprites {
+		if rl.CheckCollisionPointRec(mouse_position, sprite.source) {
+			rl.DrawRectangleLinesEx(sprite.source, 2, rl.RED)
+			break
+		}
+	}
 }
 
 UnloadEditor :: proc() {}

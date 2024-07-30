@@ -14,6 +14,8 @@ WINDOW_WIDTH :: 1280
 WINDOW_HEIGHT :: 720
 WINDOW_TITLE :: "Sprite Bundler"
 
+TEST_PROJECT :: "Hello World"
+
 debug_show_fps: bool
 
 project: core.Project
@@ -47,7 +49,7 @@ main :: proc() {
 	rl.InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
 	defer rl.CloseWindow()
 
-	rl.SetWindowMinSize(640, 480)
+	rl.SetWindowMinSize(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
 	rl.SetWindowState({.WINDOW_RESIZABLE})
 	rl.SetTraceLogLevel(.DEBUG)
 
@@ -55,11 +57,18 @@ main :: proc() {
 	max_fps := rl.GetMonitorRefreshRate(rl.GetCurrentMonitor())
 	rl.SetTargetFPS(max_fps <= 0 ? FPS_MINIMUM : max_fps)
 
-	project, err := core.LoadProject("data/test.json")
+	if project, err := core.CreateNewProject(TEST_PROJECT, 1024, false, false); err == .Project_Exists {
+		project_directory, project_file := core.GetProjectFilenames(TEST_PROJECT)
+
+		project, err = core.LoadProject(project_file)
+	}
+
 	defer core.UnloadProject(&project)
 
 	screens.InitEditor()
 	defer screens.UnloadEditor()
+
+	if !os.is_dir("projects") do os.make_directory("projects")
 
 	for !rl.WindowShouldClose() {
 		screens.UpdateEditor(&project)

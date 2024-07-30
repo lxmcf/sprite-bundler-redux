@@ -22,3 +22,4 @@ run: build
 
 clean:
 	rm -f ./$(EXE)
+	rm -rf projects

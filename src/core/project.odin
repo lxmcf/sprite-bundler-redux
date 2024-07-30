@@ -3,8 +3,13 @@ package core
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"
+import "core:path/filepath"
+import "core:strings"
 
 import rl "vendor:raylib"
+
+DEFAULT_PROJECT_DIRECTORY :: "projects"
+DEFAULT_PROJECT_FILENAME :: "project.lspp"
 
 Sprite :: struct {
 	name:      string,
@@ -33,6 +38,7 @@ WriteableSprite :: struct {
 Project :: struct {
 	version: int,
 	name:    string,
+	file:    string,
 	sprites: [dynamic]Sprite,
 	atlas:   struct {
 		size:               int,
@@ -64,6 +70,36 @@ Error :: enum {
 	None,
 	Invalid_File,
 	Invalid_Data,
+	Project_Exists,
+}
+
+GetProjectFilenames :: proc(name: string, allocator := context.allocator) -> (directory: string, file: string) {
+	project_directory := strings.concatenate({DEFAULT_PROJECT_DIRECTORY, filepath.SEPARATOR_STRING, name})
+	project_file := strings.concatenate({project_directory, filepath.SEPARATOR_STRING, DEFAULT_PROJECT_FILENAME})
+
+	return project_directory, project_file
+}
+
+CreateNewProject :: proc(name: string, atlas_size: int, embed_files, auto_centre: bool) -> (Project, Error) {
+	project_directory, project_file := GetProjectFilenames(name)
+	defer delete(project_directory)
+
+	os.make_directory(project_directory)
+
+	if os.is_file(project_file) do return {}, .Project_Exists
+
+	project_to_create: Project
+	project_to_create.version = 100
+	project_to_create.name = name
+	project_to_create.file = project_file
+	project_to_create.atlas.size = atlas_size
+
+	project_to_create.config.embed_files = embed_files
+	project_to_create.config.auto_centre = auto_centre
+
+	WriteProject(&project_to_create)
+
+	return project_to_create, .None
 }
 
 LoadProject :: proc(filename: string) -> (Project, Error) {
@@ -86,18 +122,19 @@ LoadProject :: proc(filename: string) -> (Project, Error) {
 	defer json.destroy_value(json_data)
 
 	root := json_data.(json.Object)
+	atlas := root["atlas"].(json.Object)
 
-	atlas_size := i32(root["atlas_size"].(json.Float))
+	atlas_size := i32(atlas["size"].(json.Float))
 
 	new_project.version = int(root["version"].(json.Float))
 	new_project.name, _ = json.clone_string(root["name"].(json.String), context.allocator)
 	new_project.atlas.size = int(atlas_size)
 
 	background_image := rl.GenImageChecked(
-		atlas_size,
-		atlas_size,
-		atlas_size / 32,
-		atlas_size / 32,
+		i32(atlas_size),
+		i32(atlas_size),
+		i32(atlas_size) / 32,
+		i32(atlas_size) / 32,
 		rl.LIGHTGRAY,
 		rl.GRAY,
 	)
@@ -113,6 +150,7 @@ LoadProject :: proc(filename: string) -> (Project, Error) {
 
 UnloadProject :: proc(project: ^Project) {
 	delete(project.name)
+	delete(project.file)
 
 	for sprite, index in project.sprites {
 		rl.TraceLog(.DEBUG, "DELETE: Deleting sprite[%d] %s", index, sprite.name)
@@ -131,13 +169,16 @@ UnloadProject :: proc(project: ^Project) {
 	delete(project.sprites)
 }
 
-WriteProject :: proc(filename: string, project: ^Project) {
+WriteProject :: proc(project: ^Project) {
+	if os.is_file(project.file) do os.rename(project.file, strings.concatenate({project.file, ".bkp"}, context.temp_allocator))
+
 	project_to_write := WriteableProject {
 		version = project.version,
 		name = project.name,
 		atlas = {size = project.atlas.size},
 		config = {embed_files = project.config.embed_files, auto_centre = project.config.auto_centre},
 	}
+	defer delete(project_to_write.sprites)
 
 	for sprite in project.sprites {
 		sprite_to_write := WriteableSprite {
@@ -153,8 +194,10 @@ WriteProject :: proc(filename: string, project: ^Project) {
 
 	options: json.Marshal_Options
 	options.pretty = true
+	options.use_spaces = true
+	options.spaces = 4
 
 	if project_data, error := json.marshal(project_to_write, options, context.temp_allocator); error == nil {
-		os.write_entire_file(filename, project_data)
+		os.write_entire_file(project.file, project_data)
 	}
 }
