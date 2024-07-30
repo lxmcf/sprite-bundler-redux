@@ -18,6 +18,18 @@ Sprite :: struct {
 	},
 }
 
+@(private)
+WriteableSprite :: struct {
+	name:      string,
+	file:      string,
+	source:    rl.Rectangle,
+	origin:    rl.Vector2,
+	animation: struct {
+		frames: [dynamic]rl.Rectangle,
+		speed:  f32,
+	},
+}
+
 Project :: struct {
 	version: int,
 	name:    string,
@@ -27,6 +39,20 @@ Project :: struct {
 		background_texture: rl.Texture2D,
 		foreground_texture: rl.Texture2D,
 		foreground_image:   rl.Image,
+	},
+	config:  struct {
+		embed_files: bool,
+		auto_centre: bool,
+	},
+}
+
+@(private)
+WriteableProject :: struct {
+	version: int,
+	name:    string,
+	sprites: [dynamic]WriteableSprite,
+	atlas:   struct {
+		size: int,
 	},
 	config:  struct {
 		embed_files: bool,
@@ -63,6 +89,7 @@ LoadProject :: proc(filename: string) -> (Project, Error) {
 
 	atlas_size := i32(root["atlas_size"].(json.Float))
 
+	new_project.version = int(root["version"].(json.Float))
 	new_project.name, _ = json.clone_string(root["name"].(json.String), context.allocator)
 	new_project.atlas.size = int(atlas_size)
 
@@ -102,4 +129,32 @@ UnloadProject :: proc(project: ^Project) {
 	rl.UnloadTexture(project.atlas.foreground_texture)
 
 	delete(project.sprites)
+}
+
+WriteProject :: proc(filename: string, project: ^Project) {
+	project_to_write := WriteableProject {
+		version = project.version,
+		name = project.name,
+		atlas = {size = project.atlas.size},
+		config = {embed_files = project.config.embed_files, auto_centre = project.config.auto_centre},
+	}
+
+	for sprite in project.sprites {
+		sprite_to_write := WriteableSprite {
+			name = sprite.name,
+			file = sprite.file,
+			source = sprite.source,
+			origin = sprite.origin,
+			animation = {frames = sprite.animation.frames, speed = sprite.animation.speed},
+		}
+
+		append(&project_to_write.sprites, sprite_to_write)
+	}
+
+	options: json.Marshal_Options
+	options.pretty = true
+
+	if project_data, error := json.marshal(project_to_write, options, context.temp_allocator); error == nil {
+		os.write_entire_file(filename, project_data)
+	}
 }

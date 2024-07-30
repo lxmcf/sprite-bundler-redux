@@ -49,7 +49,7 @@ main :: proc() {
 
 	rl.SetWindowMinSize(640, 480)
 	rl.SetWindowState({.WINDOW_RESIZABLE})
-	rl.SetTraceLogLevel(.INFO)
+	rl.SetTraceLogLevel(.DEBUG)
 
 	// Set max framerate without vsync
 	max_fps := rl.GetMonitorRefreshRate(rl.GetCurrentMonitor())
@@ -59,6 +59,7 @@ main :: proc() {
 	defer core.UnloadProject(&project)
 
 	screens.InitEditor()
+	defer screens.UnloadEditor()
 
 	for !rl.WindowShouldClose() {
 		screens.UpdateEditor(&project)

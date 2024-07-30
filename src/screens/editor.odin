@@ -35,6 +35,25 @@ UpdateCamera :: proc() {
 }
 
 @(private)
+HandleShortcuts :: proc(project: ^core.Project) {
+	// Centre camera
+	if rl.IsKeyReleased(.Z) {
+		screen: rl.Vector2 = {f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight())}
+
+		editor_camera.offset = screen / 2
+		editor_camera.target = {f32(project.atlas.size), f32(project.atlas.size)} / 2
+		editor_camera.zoom = 0.5
+	}
+
+	if rl.IsKeyDown(.LEFT_CONTROL) {
+		// Save Project
+		if rl.IsKeyPressed(.S) {
+			core.WriteProject("output.json", project)
+		}
+	}
+}
+
+@(private)
 MassWidthSort :: proc(a, b: core.Sprite) -> bool {
 	mass_a := a.source.width * a.source.height
 	mass_b := b.source.width * b.source.height
@@ -80,7 +99,7 @@ PackSprites :: proc(project: ^core.Project) {
 		texture_placed += 1
 	}
 
-	rl.TraceLog(.INFO, "Sorted %d textures!", texture_placed)
+	rl.TraceLog(.DEBUG, "Sorted %d textures!", texture_placed)
 }
 
 InitEditor :: proc() {
@@ -89,6 +108,7 @@ InitEditor :: proc() {
 
 UpdateEditor :: proc(project: ^core.Project) {
 	UpdateCamera()
+	HandleShortcuts(project)
 
 	if rl.IsFileDropped() {
 		files := rl.LoadDroppedFiles()
@@ -127,6 +147,8 @@ UpdateEditor :: proc(project: ^core.Project) {
 
 			rl.UnloadTexture(project.atlas.foreground_texture)
 			project.atlas.foreground_texture = rl.LoadTextureFromImage(project.atlas.foreground_image)
+
+
 		} else {
 			rl.TraceLog(.ERROR, "FILE: Did not find any files to sort!")
 		}
@@ -145,3 +167,5 @@ DrawEditor :: proc(project: core.Project) {
 	// 	rl.DrawRectangleLinesEx(sprite.source, 1, rl.RED)
 	// }
 }
+
+UnloadEditor :: proc() {}
