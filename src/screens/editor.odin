@@ -66,7 +66,8 @@ HandleShortcuts :: proc(project: ^core.Project) {
 				defer io.CloseFile(handle)
 
 				os.write_string(handle, "LSPP")
-				os.write(handle, compressed_data[0:compressed_data_size])
+				os.write_ptr(handle, &compressed_data_size, size_of(i32))
+				os.write_ptr(handle, compressed_data, int(compressed_data_size))
 			}
 		}
 
@@ -76,11 +77,28 @@ HandleShortcuts :: proc(project: ^core.Project) {
 				handle, _ := io.OpenFile("test.dat", .READ)
 				defer io.CloseFile(handle)
 
+				compressed_data_size, decompressed_data_size: i32
+
 				header := make([]byte, 4, context.temp_allocator)
 
-				bytes_read, error := os.read(handle, header)
+				os.read(handle, header)
 
-				rl.TraceLog(.INFO, "Header Read: %s", header)
+				os.read_ptr(handle, &compressed_data_size, size_of(compressed_data_size))
+				rl.TraceLog(.INFO, "Compressed Size: %d", compressed_data_size)
+
+				compressed_data := make([]byte, compressed_data_size, context.temp_allocator)
+				os.read(handle, compressed_data)
+
+				decompressed_data := rl.DecompressData(
+					raw_data(compressed_data),
+					compressed_data_size,
+					&decompressed_data_size,
+				)
+
+				image := rl.LoadImageFromMemory(".png", decompressed_data, decompressed_data_size)
+				defer rl.UnloadImage(image)
+
+				rl.ExportImage(image, "decomp.png")
 			}
 		}
 	}
@@ -210,11 +228,7 @@ DrawEditor :: proc(project: core.Project) {
 	defer rl.EndMode2D()
 
 	rl.DrawTextureV(project.atlas.background_texture, {}, rl.WHITE)
-	// rl.DrawTextureV(project.atlas.foreground_texture, {}, rl.WHITE)
-
-	for sprite in project.sprites {
-		rl.DrawTexturePro(project.atlas.foreground_texture, sprite.source, sprite.source, {}, 0, rl.WHITE)
-	}
+	rl.DrawTextureV(project.atlas.foreground_texture, {}, rl.WHITE)
 
 	mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), editor_camera)
 

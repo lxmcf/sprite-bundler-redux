@@ -22,4 +22,5 @@ run: build
 
 clean:
 	rm -f ./$(EXE)
+	rm -f *.dat
 	rm -rf projects

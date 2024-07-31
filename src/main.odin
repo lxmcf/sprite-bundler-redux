@@ -70,6 +70,9 @@ main :: proc() {
 	screens.InitEditor()
 	defer screens.UnloadEditor()
 
+	list := rl.LoadDirectoryFilesEx("src", nil, true)
+	defer rl.UnloadDirectoryFiles(list)
+
 	for !rl.WindowShouldClose() {
 		screens.UpdateEditor(&project)
 
