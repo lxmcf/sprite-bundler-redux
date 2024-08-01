@@ -14,7 +14,7 @@ DEFAULT_PROJECT_FILENAME :: "project.lspp"
 Sprite :: struct {
 	name:      string,
 	file:      string,
-	texture:   rl.Image,
+	image:     rl.Image,
 	source:    rl.Rectangle,
 	origin:    rl.Vector2,
 	animation: struct {
@@ -73,14 +73,31 @@ Error :: enum {
 	Project_Exists,
 }
 
-GetProjectFilenames :: proc(name: string, allocator := context.allocator) -> (directory: string, file: string) {
+GetProjectFilenames :: proc(name: string, allocator := context.allocator) -> (string, string) {
 	project_directory := strings.concatenate({DEFAULT_PROJECT_DIRECTORY, filepath.SEPARATOR_STRING, name})
 	project_file := strings.concatenate({project_directory, filepath.SEPARATOR_STRING, DEFAULT_PROJECT_FILENAME})
 
 	return project_directory, project_file
 }
 
-CreateNewProject :: proc(name: string, atlas_size: int, embed_files, auto_centre: bool) -> (err: Error) {
+GenerateAtlas :: proc(project: ^Project) {
+	rl.ImageClearBackground(&project.atlas.foreground_image, rl.BLANK)
+
+	for sprite in project.sprites {
+		rl.ImageDraw(
+			&project.atlas.foreground_image,
+			sprite.image,
+			{0, 0, sprite.source.width, sprite.source.height},
+			sprite.source,
+			rl.WHITE,
+		)
+	}
+
+	rl.UnloadTexture(project.atlas.foreground_texture)
+	project.atlas.foreground_texture = rl.LoadTextureFromImage(project.atlas.foreground_image)
+}
+
+CreateNewProject :: proc(name: string, atlas_size: int, embed_files, auto_centre: bool) -> Error {
 	project_directory, project_file := GetProjectFilenames(name, context.temp_allocator)
 	defer delete(project_directory)
 	defer delete(project_file)
@@ -103,7 +120,7 @@ CreateNewProject :: proc(name: string, atlas_size: int, embed_files, auto_centre
 	return .None
 }
 
-LoadProject :: proc(filename: string) -> (project: Project, error: Error) {
+LoadProject :: proc(filename: string) -> (Project, Error) {
 	new_project: Project
 
 	data, ok := os.read_entire_file(filename)
@@ -113,9 +130,9 @@ LoadProject :: proc(filename: string) -> (project: Project, error: Error) {
 	}
 	defer delete(data)
 
-	json_data, err := json.parse(data)
-	if err != .None {
-		error_name := fmt.tprint(err)
+	json_data, error := json.parse(data)
+	if error != .None {
+		error_name := fmt.tprint(error)
 		rl.TraceLog(.ERROR, "FILE: Failed to parse json: %s", error_name)
 
 		return new_project, .Invalid_Data
@@ -148,6 +165,34 @@ LoadProject :: proc(filename: string) -> (project: Project, error: Error) {
 	new_project.atlas.background_texture = rl.LoadTextureFromImage(background_image)
 	new_project.atlas.foreground_texture = rl.LoadTextureFromImage(new_project.atlas.foreground_image)
 
+	for index in root["sprites"].(json.Array) {
+		element := index.(json.Object)
+		element_source := element["source"].(json.Object)
+
+		sprite: Sprite
+		sprite.name, _ = json.clone_string(element["name"].(json.String), context.allocator)
+		sprite.file, _ = json.clone_string(element["file"].(json.String), context.allocator)
+
+		sprite.source = {
+			x      = f32(element_source["x"].(json.Float)),
+			y      = f32(element_source["y"].(json.Float)),
+			width  = f32(element_source["width"].(json.Float)),
+			height = f32(element_source["height"].(json.Float)),
+		}
+
+		if os.is_file(element["file"].(json.String)) {
+			sprite.image = rl.LoadImage(strings.unsafe_string_to_cstring(element["file"].(json.String)))
+		} else {
+			sprite.image = rl.GenImageColor(i32(sprite.source.width), i32(sprite.source.height), rl.MAGENTA)
+		}
+
+		array := element["origin"].(json.Array)
+
+		sprite.origin = {f32(array[0].(json.Float)), f32(array[1].(json.Float))}
+
+		append(&new_project.sprites, sprite)
+	}
+
 	return new_project, .None
 }
 
@@ -161,7 +206,7 @@ UnloadProject :: proc(project: ^Project) {
 		delete(sprite.name)
 		delete(sprite.file)
 
-		rl.UnloadImage(sprite.texture)
+		rl.UnloadImage(sprite.image)
 	}
 
 	rl.UnloadImage(project.atlas.foreground_image)

@@ -18,8 +18,6 @@ TEST_PROJECT :: "Hello World"
 
 debug_show_fps: bool
 
-project: core.Project
-
 DebugDrawFPS :: proc() {
 	DEBUG_FONT_SIZE :: 20
 
@@ -64,14 +62,13 @@ main :: proc() {
 	defer delete(project_file)
 
 	core.CreateNewProject(TEST_PROJECT, 1024, false, false)
-	project, err := core.LoadProject(project_file)
+	project, error := core.LoadProject(project_file)
+	if error == .None do core.GenerateAtlas(&project)
+
 	defer core.UnloadProject(&project)
 
 	screens.InitEditor()
 	defer screens.UnloadEditor()
-
-	list := rl.LoadDirectoryFilesEx("src", nil, true)
-	defer rl.UnloadDirectoryFiles(list)
 
 	for !rl.WindowShouldClose() {
 		screens.UpdateEditor(&project)

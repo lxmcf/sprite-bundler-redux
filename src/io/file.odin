@@ -7,8 +7,10 @@ FileMode :: enum {
 	READ,
 }
 
+File :: os.Handle
+
 // Simplification of os.open based on read/write_entire_file
-OpenFile :: proc(filename: string, mode: FileMode, truncate := true) -> (handle: os.Handle, success: bool) {
+OpenFile :: proc(filename: string, mode: FileMode, truncate := true) -> (File, bool) {
 	file_flags, file_mode: int
 
 	switch mode {
@@ -23,8 +25,6 @@ OpenFile :: proc(filename: string, mode: FileMode, truncate := true) -> (handle:
 		file_flags = os.O_RDONLY
 	}
 
-	file_handle, error := os.open(filename, file_flags, file_mode)
-
 	if file_handle, error := os.open(filename, file_flags, file_mode); error != os.ERROR_NONE {
 		return file_handle, false
 	} else {
@@ -32,6 +32,12 @@ OpenFile :: proc(filename: string, mode: FileMode, truncate := true) -> (handle:
 	}
 }
 
-CloseFile :: proc(handle: os.Handle) -> (succes: bool) {
+WriteBuffer :: proc(handle: File, buffer: []byte) -> int {
+	written, _ := os.write(handle, buffer)
+
+	return written
+}
+
+CloseFile :: proc(handle: File) -> bool {
 	return os.close(handle) == os.ERROR_NONE
 }

@@ -118,10 +118,10 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 				texture := rl.LoadImage(path)
 
 				sprite: core.Sprite = {
-					name    = strings.clone_from_cstring(rl.GetFileName(path)),
-					file    = strings.clone_from_cstring(path),
-					texture = texture,
-					source  = {0, 0, f32(texture.width), f32(texture.height)},
+					name   = strings.clone_from_cstring(rl.GetFileName(path)),
+					file   = strings.clone_from_cstring(path),
+					image  = texture,
+					source = {0, 0, f32(texture.width), f32(texture.height)},
 				}
 
 				if project.config.auto_centre {
@@ -133,20 +133,7 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 
 			PackSprites(project)
 
-			rl.ImageClearBackground(&project.atlas.foreground_image, rl.BLANK)
-
-			for sprite in project.sprites {
-				rl.ImageDraw(
-					&project.atlas.foreground_image,
-					sprite.texture,
-					{0, 0, sprite.source.width, sprite.source.height},
-					sprite.source,
-					rl.WHITE,
-				)
-			}
-
-			rl.UnloadTexture(project.atlas.foreground_texture)
-			project.atlas.foreground_texture = rl.LoadTextureFromImage(project.atlas.foreground_image)
+			core.GenerateAtlas(project)
 		} else {
 			rl.TraceLog(.ERROR, "FILE: Did not find any files to sort!")
 		}
@@ -154,7 +141,7 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 }
 
 @(private)
-MassWidthSort :: proc(a, b: core.Sprite) -> (greater: bool) {
+MassWidthSort :: proc(a, b: core.Sprite) -> bool {
 	mass_a := a.source.width * a.source.height
 	mass_b := b.source.width * b.source.height
 
@@ -171,7 +158,7 @@ MassWidthSort :: proc(a, b: core.Sprite) -> (greater: bool) {
 
 @(private)
 PackSprites :: proc(project: ^core.Project) {
-	slice.sort_by(project.sprites[:], MassWidthSort)
+	slice.stable_sort_by(project.sprites[:], MassWidthSort)
 
 	valignment, texture_placed := f32(project.atlas.size), 0
 
@@ -179,23 +166,31 @@ PackSprites :: proc(project: ^core.Project) {
 		if sprite.source.height < valignment do valignment = sprite.source.height
 	}
 
+	rl.TraceLog(.DEBUG, "valignment: %f", valignment)
+
+	// NOTE: I have no idea why I need a pointer... From a pointer... It doesn't sort correctly otherwise
 	for &sprite in project.sprites {
+		times_looped := 0
+
+		current_rectangle := &sprite.source
+
 		for j := 0; j < texture_placed; j += 1 {
-			current_rect := project.sprites[j].source
+			for rl.CheckCollisionRecs(current_rectangle^, project.sprites[j].source) {
+				current_rectangle.x += project.sprites[j].source.width
 
-			for rl.CheckCollisionRecs(sprite.source, current_rect) {
-				sprite.source.x += current_rect.width
-
-				within_x := int(sprite.source.x + sprite.source.width) <= project.atlas.size
+				within_x := int(current_rectangle.x + current_rectangle.width) <= project.atlas.size
 
 				if !within_x {
-					sprite.source.x = 0
-					sprite.source.y += valignment
+					current_rectangle.x = 0
+					current_rectangle.y += valignment
 
 					j = 0
 				}
 			}
 		}
+
+		rl.TraceLog(.DEBUG, "Sprite [%s] looped %d times", sprite.name, times_looped)
+
 		texture_placed += 1
 	}
 

@@ -1,7 +1,5 @@
 package screens
 
-import rl "vendor:raylib"
-
 ProjectListItem :: struct {
 	name: string,
 	file: string,
