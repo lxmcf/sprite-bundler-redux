@@ -7,10 +7,43 @@ import "core:strings"
 import rl "vendor:raylib"
 
 import "bundler:core"
-import "bundler:io"
 
 @(private = "file")
 editor_camera: rl.Camera2D
+
+FileMode :: enum {
+	WRITE,
+	READ,
+}
+
+File :: os.Handle
+
+// Simplification of os.open based on read/write_entire_file
+OpenFile :: proc(filename: string, mode: FileMode, truncate := true) -> (File, bool) {
+	file_flags, file_mode: int
+
+	switch mode {
+	case .WRITE:
+		file_flags = os.O_WRONLY | os.O_CREATE
+		if (truncate) do file_flags |= os.O_TRUNC
+
+		when ODIN_OS == .Linux || ODIN_OS == .Darwin {
+			file_mode = os.S_IRUSR | os.S_IWUSR | os.S_IRGRP | os.S_IROTH
+		}
+	case .READ:
+		file_flags = os.O_RDONLY
+	}
+
+	if file_handle, error := os.open(filename, file_flags, file_mode); error != os.ERROR_NONE {
+		return file_handle, false
+	} else {
+		return file_handle, true
+	}
+}
+
+CloseFile :: proc(handle: File) -> bool {
+	return os.close(handle) == os.ERROR_NONE
+}
 
 @(private)
 UpdateCamera :: proc() {
@@ -62,8 +95,8 @@ HandleShortcuts :: proc(project: ^core.Project) {
 				raw_data := rl.ExportImageToMemory(project.atlas.foreground_image, ".png", &raw_data_size)
 				compressed_data := rl.CompressData(raw_data, raw_data_size, &compressed_data_size)
 
-				handle, _ := io.OpenFile("test.dat", .WRITE)
-				defer io.CloseFile(handle)
+				handle, _ := OpenFile("test.dat", .WRITE)
+				defer CloseFile(handle)
 
 				os.write_string(handle, "LSPP")
 				os.write_ptr(handle, &compressed_data_size, size_of(i32))
@@ -74,8 +107,8 @@ HandleShortcuts :: proc(project: ^core.Project) {
 		// Import image
 		when ODIN_DEBUG {
 			if rl.IsKeyPressed(.R) {
-				handle, _ := io.OpenFile("test.dat", .READ)
-				defer io.CloseFile(handle)
+				handle, _ := OpenFile("test.dat", .READ)
+				defer CloseFile(handle)
 
 				compressed_data_size, decompressed_data_size: i32
 
@@ -84,7 +117,7 @@ HandleShortcuts :: proc(project: ^core.Project) {
 				os.read(handle, header)
 
 				os.read_ptr(handle, &compressed_data_size, size_of(compressed_data_size))
-				rl.TraceLog(.INFO, "Compressed Size: %d", compressed_data_size)
+				rl.TraceLog(.DEBUG, "Compressed Size: %d", compressed_data_size)
 
 				compressed_data := make([]byte, compressed_data_size, context.temp_allocator)
 				os.read(handle, compressed_data)
@@ -151,6 +184,8 @@ MassWidthSort :: proc(a, b: core.Sprite) -> bool {
 
 		if a.source.height < b.source.height do return false
 		if a.source.height > b.source.height do return true
+
+		return false
 	}
 
 	return mass_a > mass_b
@@ -165,8 +200,6 @@ PackSprites :: proc(project: ^core.Project) {
 	for sprite in project.sprites {
 		if sprite.source.height < valignment do valignment = sprite.source.height
 	}
-
-	rl.TraceLog(.DEBUG, "valignment: %f", valignment)
 
 	// NOTE: I have no idea why I need a pointer... From a pointer... It doesn't sort correctly otherwise
 	for &sprite in project.sprites {

@@ -8,12 +8,11 @@ OPT := none
 ifeq ($(BUILD), DEBUG)
 	C_FLAGS += -debug
 else ifeq ($(BUILD), RELEASE)
-	C_FLAGS += -microarch:native
 	OPT = speed
 endif
 
 ifeq ($(OS), Windows_NT)
-	exe += .exe
+	EXE += .exe
 endif
 
 .PHONY: build run clean
