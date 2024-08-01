@@ -34,14 +34,29 @@ DebugDrawFPS :: proc() {
 }
 
 main :: proc() {
-	track: mem.Tracking_Allocator
-	mem.tracking_allocator_init(&track, context.allocator)
-	context.allocator = mem.tracking_allocator(&track)
-	defer {
-		for _, entry in track.allocation_map do fmt.eprintf("%v leaked %v bytes\n", entry.location, entry.size)
-		for entry in track.bad_free_array do fmt.eprintf("%v bad free\n", entry.location)
+	when ODIN_DEBUG {
+		track: mem.Tracking_Allocator
+		mem.tracking_allocator_init(&track, context.allocator)
+		context.allocator = mem.tracking_allocator(&track)
+		defer {
+			if len(track.allocation_map) > 0 {
+				fmt.eprintfln("<------ %v leaked allocations ------>", len(track.allocation_map))
 
-		mem.tracking_allocator_destroy(&track)
+				for _, entry in track.allocation_map {
+					fmt.eprintfln("%v leaked %v bytes", entry.location, entry.size)
+				}
+			}
+
+			if len(track.bad_free_array) > 0 {
+				fmt.eprintfln("<------ %v bad frees ------>", len(track.bad_free_array))
+
+				for entry in track.bad_free_array {
+					fmt.eprintfln("%v bad free", entry.location)
+				}
+			}
+
+			mem.tracking_allocator_destroy(&track)
+		}
 	}
 
 	rl.InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
