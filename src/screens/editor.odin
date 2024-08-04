@@ -7,6 +7,7 @@ import "core:strings"
 import rl "vendor:raylib"
 
 import "bundler:core"
+import "bundler:util"
 
 @(private = "file")
 editor_camera: rl.Camera2D
@@ -149,6 +150,15 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 				if !rl.IsFileExtension(path, ".png") do continue
 
 				texture := rl.LoadImage(path)
+
+				if project.config.copy_files {
+					current_filename := rl.GetFileName(path)
+					rl.TraceLog(.INFO, "FILENAME: %s", current_filename)
+					path := util.CreatePath(project.asssets, string(current_filename))
+					defer delete(path)
+
+					rl.ExportImage(texture, strings.unsafe_string_to_cstring(path))
+				}
 
 				sprite: core.Sprite = {
 					name   = strings.clone_from_cstring(rl.GetFileName(path)),

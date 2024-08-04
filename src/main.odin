@@ -34,49 +34,48 @@ DebugDrawFPS :: proc() {
 }
 
 main :: proc() {
-	when ODIN_DEBUG {
-		track: mem.Tracking_Allocator
-		mem.tracking_allocator_init(&track, context.allocator)
-		context.allocator = mem.tracking_allocator(&track)
-		defer {
-			if len(track.allocation_map) > 0 {
-				fmt.eprintfln("<------ %v leaked allocations ------>", len(track.allocation_map))
+	track: mem.Tracking_Allocator
+	mem.tracking_allocator_init(&track, context.allocator)
+	context.allocator = mem.tracking_allocator(&track)
+	defer {
+		if len(track.allocation_map) > 0 {
+			fmt.eprintfln("<------ %v leaked allocations ------>", len(track.allocation_map))
 
-				for _, entry in track.allocation_map {
-					fmt.eprintfln("%v leaked %v bytes", entry.location, entry.size)
-				}
+			for _, entry in track.allocation_map {
+				fmt.eprintfln("%v leaked %v bytes", entry.location, entry.size)
 			}
-
-			if len(track.bad_free_array) > 0 {
-				fmt.eprintfln("<------ %v bad frees ------>", len(track.bad_free_array))
-
-				for entry in track.bad_free_array {
-					fmt.eprintfln("%v bad free", entry.location)
-				}
-			}
-
-			mem.tracking_allocator_destroy(&track)
 		}
+
+		if len(track.bad_free_array) > 0 {
+			fmt.eprintfln("<------ %v bad frees ------>", len(track.bad_free_array))
+
+			for entry in track.bad_free_array {
+				fmt.eprintfln("%v bad free", entry.location)
+			}
+		}
+
+		mem.tracking_allocator_destroy(&track)
 	}
 
 	rl.InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
 	defer rl.CloseWindow()
 
 	rl.SetWindowMinSize(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
-	rl.SetWindowState({.WINDOW_RESIZABLE})
+	rl.SetWindowState({.WINDOW_RESIZABLE, .VSYNC_HINT})
 	rl.SetTraceLogLevel(.DEBUG)
 
 	// Set max framerate without vsync
-	max_fps := rl.GetMonitorRefreshRate(rl.GetCurrentMonitor())
-	rl.SetTargetFPS(max_fps <= 0 ? FPS_MINIMUM : max_fps)
+	// max_fps := rl.GetMonitorRefreshRate(rl.GetCurrentMonitor())
+	// rl.SetTargetFPS(max_fps <= 0 ? FPS_MINIMUM : max_fps)
 
 	if !os.is_dir("projects") do os.make_directory("projects")
 
-	project_directory, project_file := core.GetProjectFilenames(TEST_PROJECT)
+	project_directory, project_file, project_assets := core.GetProjectFilenames(TEST_PROJECT)
 	defer delete(project_directory)
 	defer delete(project_file)
+	defer delete(project_assets)
 
-	core.CreateNewProject(TEST_PROJECT, 1024, false, false)
+	core.CreateNewProject(TEST_PROJECT, 1024, true, true)
 	project, error := core.LoadProject(project_file)
 	if error == .None do core.GenerateAtlas(&project)
 
