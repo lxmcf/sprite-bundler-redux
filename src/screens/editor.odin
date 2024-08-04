@@ -10,62 +10,34 @@ import "bundler:core"
 import "bundler:util"
 
 @(private = "file")
-editor_camera: rl.Camera2D
-
-FileMode :: enum {
-	WRITE,
-	READ,
+EditorState :: struct {
+	camera:        rl.Camera2D,
+	current_atlas: int,
 }
 
-File :: os.Handle
-
-// Simplification of os.open based on read/write_entire_file
-OpenFile :: proc(filename: string, mode: FileMode, truncate := true) -> (File, bool) {
-	file_flags, file_mode: int
-
-	switch mode {
-	case .WRITE:
-		file_flags = os.O_WRONLY | os.O_CREATE
-		if (truncate) do file_flags |= os.O_TRUNC
-
-		when ODIN_OS == .Linux || ODIN_OS == .Darwin {
-			file_mode = os.S_IRUSR | os.S_IWUSR | os.S_IRGRP | os.S_IROTH
-		}
-	case .READ:
-		file_flags = os.O_RDONLY
-	}
-
-	if file_handle, error := os.open(filename, file_flags, file_mode); error != os.ERROR_NONE {
-		return file_handle, false
-	} else {
-		return file_handle, true
-	}
-}
-
-CloseFile :: proc(handle: File) -> bool {
-	return os.close(handle) == os.ERROR_NONE
-}
+@(private = "file")
+state: EditorState
 
 @(private)
 UpdateCamera :: proc() {
 	if rl.IsMouseButtonDown(.MIDDLE) || rl.IsKeyDown(.LEFT_ALT) {
 		delta := rl.GetMouseDelta()
 
-		delta *= -1.0 / editor_camera.zoom
-		editor_camera.target += delta
+		delta *= -1.0 / state.camera.zoom
+		state.camera.target += delta
 	}
 
 	mouse_wheel := rl.GetMouseWheelMove()
 	if mouse_wheel != 0 && !rl.IsMouseButtonDown(.MIDDLE) {
-		mouse_world_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), editor_camera)
+		mouse_world_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
 
-		editor_camera.offset = rl.GetMousePosition()
-		editor_camera.target = mouse_world_position
+		state.camera.offset = rl.GetMousePosition()
+		state.camera.target = mouse_world_position
 
 		scale_factor := 1 + (0.25 * abs(mouse_wheel))
 		if mouse_wheel < 0 do scale_factor = 1.0 / scale_factor
 
-		editor_camera.zoom = clamp(editor_camera.zoom * scale_factor, 0.125, 64)
+		state.camera.zoom = clamp(state.camera.zoom * scale_factor, 0.125, 64)
 	}
 }
 
@@ -75,9 +47,9 @@ HandleShortcuts :: proc(project: ^core.Project) {
 	if rl.IsKeyReleased(.Z) {
 		screen: rl.Vector2 = {f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight())}
 
-		editor_camera.offset = screen / 2
-		editor_camera.target = {f32(project.atlas.size), f32(project.atlas.size)} / 2
-		editor_camera.zoom = 0.5
+		state.camera.offset = screen / 2
+		state.camera.target = {f32(project.config.atlas_size), f32(project.config.atlas_size)} / 2
+		state.camera.zoom = 0.5
 	}
 
 	if rl.IsKeyDown(.LEFT_CONTROL) {
@@ -86,39 +58,47 @@ HandleShortcuts :: proc(project: ^core.Project) {
 			core.WriteProject(project)
 		}
 
-		// Export Image
-		if rl.IsKeyPressed(.E) {
-			rl.ExportImage(project.atlas.foreground_image, "atlas.png")
+		if rl.IsKeyPressed(.N) {
+			core.CreateNewAtlas(project, "test")
+		}
 
-			when ODIN_DEBUG {
+		change_page := int(rl.IsKeyPressed(.RIGHT_BRACKET)) - int(rl.IsKeyPressed(.LEFT_BRACKET))
+		if change_page != 0 {
+			state.current_atlas += change_page
+
+			if state.current_atlas > len(project.atlas) - 1 do state.current_atlas = 0
+			if state.current_atlas < 0 do state.current_atlas = len(project.atlas) - 1
+		}
+
+		when ODIN_DEBUG {
+			// Export Image
+			if rl.IsKeyPressed(.E) {
+				rl.ExportImage(project.atlas[state.current_atlas].image, "atlas.png")
+
 				compressed_data_size, raw_data_size: i32
 
-				raw_data := rl.ExportImageToMemory(project.atlas.foreground_image, ".png", &raw_data_size)
+				raw_data := rl.ExportImageToMemory(project.atlas[state.current_atlas].image, ".png", &raw_data_size)
 				compressed_data := rl.CompressData(raw_data, raw_data_size, &compressed_data_size)
 
-				handle, _ := OpenFile("test.dat", .WRITE)
-				defer CloseFile(handle)
+				handle, _ := util.OpenFile("test.dat", .WRITE)
+				defer util.CloseFile(handle)
 
 				os.write_string(handle, "LSPP")
 				os.write_ptr(handle, &compressed_data_size, size_of(i32))
 				os.write_ptr(handle, compressed_data, int(compressed_data_size))
 			}
-		}
 
-		// Import image
-		when ODIN_DEBUG {
+			// Import Image
 			if rl.IsKeyPressed(.R) {
-				handle, _ := OpenFile("test.dat", .READ)
-				defer CloseFile(handle)
+				handle, _ := util.OpenFile("test.dat", .READ)
+				defer util.CloseFile(handle)
 
 				compressed_data_size, decompressed_data_size: i32
 
 				header := make([]byte, 4, context.temp_allocator)
 
 				os.read(handle, header)
-
 				os.read_ptr(handle, &compressed_data_size, size_of(compressed_data_size))
-				rl.TraceLog(.DEBUG, "Compressed Size: %d", compressed_data_size)
 
 				compressed_data := make([]byte, compressed_data_size, context.temp_allocator)
 				os.read(handle, compressed_data)
@@ -153,11 +133,12 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 
 				if project.config.copy_files {
 					current_filename := rl.GetFileName(path)
-					rl.TraceLog(.INFO, "FILENAME: %s", current_filename)
-					path := util.CreatePath(project.asssets, string(current_filename))
-					defer delete(path)
+					new_path := util.CreatePath(project.assets, string(current_filename))
+					defer delete(new_path)
 
-					rl.ExportImage(texture, strings.unsafe_string_to_cstring(path))
+					path = strings.unsafe_string_to_cstring(new_path)
+
+					rl.ExportImage(texture, path)
 				}
 
 				sprite: core.Sprite = {
@@ -176,7 +157,7 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 
 			PackSprites(project)
 
-			core.GenerateAtlas(project)
+			core.GenerateAtlas(project, state.current_atlas)
 		} else {
 			rl.TraceLog(.ERROR, "FILE: Did not find any files to sort!")
 		}
@@ -205,7 +186,7 @@ MassWidthSort :: proc(a, b: core.Sprite) -> bool {
 PackSprites :: proc(project: ^core.Project) {
 	slice.stable_sort_by(project.sprites[:], MassWidthSort)
 
-	valignment, texture_placed := f32(project.atlas.size), 0
+	valignment, texture_placed := f32(project.config.atlas_size), 0
 
 	for sprite in project.sprites {
 		if sprite.source.height < valignment do valignment = sprite.source.height
@@ -221,7 +202,7 @@ PackSprites :: proc(project: ^core.Project) {
 			for rl.CheckCollisionRecs(current_rectangle^, project.sprites[j].source) {
 				current_rectangle.x += project.sprites[j].source.width
 
-				within_x := int(current_rectangle.x + current_rectangle.width) <= project.atlas.size
+				within_x := int(current_rectangle.x + current_rectangle.width) <= project.config.atlas_size
 
 				if !within_x {
 					current_rectangle.x = 0
@@ -241,7 +222,7 @@ PackSprites :: proc(project: ^core.Project) {
 }
 
 InitEditor :: proc() {
-	editor_camera.zoom = 0.5
+	state.camera.zoom = 0.5
 }
 
 UpdateEditor :: proc(project: ^core.Project) {
@@ -251,7 +232,7 @@ UpdateEditor :: proc(project: ^core.Project) {
 	HandleShortcuts(project)
 	HandleDroppedFiles(project)
 
-	mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), editor_camera)
+	mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
 
 	for sprite in project.sprites {
 		if rl.CheckCollisionPointRec(mouse_position, sprite.source) {
@@ -262,13 +243,13 @@ UpdateEditor :: proc(project: ^core.Project) {
 }
 
 DrawEditor :: proc(project: core.Project) {
-	rl.BeginMode2D(editor_camera)
+	rl.BeginMode2D(state.camera)
 	defer rl.EndMode2D()
 
-	rl.DrawTextureV(project.atlas.background_texture, {}, rl.WHITE)
-	rl.DrawTextureV(project.atlas.foreground_texture, {}, rl.WHITE)
+	rl.DrawTextureV(project.background, {}, rl.WHITE)
+	rl.DrawTextureV(project.atlas[state.current_atlas].texture, {}, rl.WHITE)
 
-	mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), editor_camera)
+	mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
 
 	for sprite in project.sprites {
 		if rl.CheckCollisionPointRec(mouse_position, sprite.source) {
@@ -276,6 +257,8 @@ DrawEditor :: proc(project: core.Project) {
 			break
 		}
 	}
+
+	rl.DrawText(strings.unsafe_string_to_cstring(project.atlas[state.current_atlas].name), 0, -40, 40, rl.WHITE)
 }
 
 UnloadEditor :: proc() {}

@@ -76,8 +76,7 @@ main :: proc() {
 	defer delete(project_assets)
 
 	core.CreateNewProject(TEST_PROJECT, 1024, true, true)
-	project, error := core.LoadProject(project_file)
-	if error == .None do core.GenerateAtlas(&project)
+	project, _ := core.LoadProject(project_file)
 
 	defer core.UnloadProject(&project)
 
