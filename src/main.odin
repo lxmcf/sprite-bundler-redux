@@ -61,12 +61,12 @@ main :: proc() {
 	defer rl.CloseWindow()
 
 	rl.SetWindowMinSize(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
-	rl.SetWindowState({.WINDOW_RESIZABLE, .VSYNC_HINT})
+	rl.SetWindowState({.WINDOW_RESIZABLE})
 	rl.SetTraceLogLevel(.DEBUG)
 
 	// Set max framerate without vsync
-	// max_fps := rl.GetMonitorRefreshRate(rl.GetCurrentMonitor())
-	// rl.SetTargetFPS(max_fps <= 0 ? FPS_MINIMUM : max_fps)
+	max_fps := rl.GetMonitorRefreshRate(rl.GetCurrentMonitor())
+	rl.SetTargetFPS(max_fps <= 0 ? FPS_MINIMUM : max_fps)
 
 	if !os.is_dir("projects") do os.make_directory("projects")
 

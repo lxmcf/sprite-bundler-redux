@@ -2,7 +2,7 @@ EXE := game
 CC := odin
 BUILD ?= DEBUG
 
-C_FLAGS := -collection:bundler=src -vet -min-link-libs
+C_FLAGS := -collection:bundler=src -vet -min-link-libs -strict-style
 OPT := none
 
 EXE_EXT :=

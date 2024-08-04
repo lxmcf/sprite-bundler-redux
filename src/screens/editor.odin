@@ -127,14 +127,14 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 		if files.count > 0 {
 			for i in 0 ..< files.count {
 				path := files.paths[i]
-				if !rl.IsFileExtension(path, ".png") do continue
+				defer delete(path)
 
+				if !rl.IsFileExtension(path, ".png") do continue
 				texture := rl.LoadImage(path)
 
 				if project.config.copy_files {
 					current_filename := rl.GetFileName(path)
 					new_path := util.CreatePath(project.assets, string(current_filename))
-					defer delete(new_path)
 
 					path = strings.unsafe_string_to_cstring(new_path)
 
@@ -142,10 +142,11 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 				}
 
 				sprite: core.Sprite = {
-					name   = strings.clone_from_cstring(rl.GetFileName(path)),
-					file   = strings.clone_from_cstring(path),
-					image  = texture,
-					source = {0, 0, f32(texture.width), f32(texture.height)},
+					name        = strings.clone_from_cstring(rl.GetFileName(path)),
+					file        = strings.clone_from_cstring(path),
+					atlas_index = state.current_atlas,
+					image       = texture,
+					source      = {0, 0, f32(texture.width), f32(texture.height)},
 				}
 
 				if project.config.auto_centre {
@@ -165,7 +166,14 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 }
 
 @(private)
+AtlasIndexSort :: proc(a, b: core.Sprite) -> bool {
+	return a.atlas_index < b.atlas_index
+}
+
+@(private)
 MassWidthSort :: proc(a, b: core.Sprite) -> bool {
+	if a.atlas_index != b.atlas_index do return false
+
 	mass_a := a.source.width * a.source.height
 	mass_b := b.source.width * b.source.height
 
@@ -184,6 +192,7 @@ MassWidthSort :: proc(a, b: core.Sprite) -> bool {
 
 @(private)
 PackSprites :: proc(project: ^core.Project) {
+	slice.stable_sort_by(project.sprites[:], AtlasIndexSort)
 	slice.stable_sort_by(project.sprites[:], MassWidthSort)
 
 	valignment, texture_placed := f32(project.config.atlas_size), 0
@@ -199,6 +208,8 @@ PackSprites :: proc(project: ^core.Project) {
 		current_rectangle := &sprite.source
 
 		for j := 0; j < texture_placed; j += 1 {
+			if sprite.atlas_index != project.sprites[j].atlas_index do continue
+
 			for rl.CheckCollisionRecs(current_rectangle^, project.sprites[j].source) {
 				current_rectangle.x += project.sprites[j].source.width
 
@@ -226,20 +237,10 @@ InitEditor :: proc() {
 }
 
 UpdateEditor :: proc(project: ^core.Project) {
-	rl.SetMouseCursor(.DEFAULT)
 	UpdateCamera()
 
 	HandleShortcuts(project)
 	HandleDroppedFiles(project)
-
-	mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
-
-	for sprite in project.sprites {
-		if rl.CheckCollisionPointRec(mouse_position, sprite.source) {
-			rl.SetMouseCursor(.POINTING_HAND)
-			break
-		}
-	}
 }
 
 DrawEditor :: proc(project: core.Project) {
@@ -250,10 +251,14 @@ DrawEditor :: proc(project: core.Project) {
 	rl.DrawTextureV(project.atlas[state.current_atlas].texture, {}, rl.WHITE)
 
 	mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
+	rl.SetMouseCursor(.DEFAULT)
 
 	for sprite in project.sprites {
+		if sprite.atlas_index != state.current_atlas do continue
+
 		if rl.CheckCollisionPointRec(mouse_position, sprite.source) {
 			rl.DrawRectangleLinesEx(sprite.source, 2, rl.RED)
+			rl.SetMouseCursor(.POINTING_HAND)
 			break
 		}
 	}

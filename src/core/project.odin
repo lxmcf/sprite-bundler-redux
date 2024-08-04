@@ -212,6 +212,7 @@ LoadProject :: proc(filename: string) -> (Project, Error) {
 		sprite: Sprite
 		sprite.name, _ = json.clone_string(element["name"].(json.String), context.allocator)
 		sprite.file, _ = json.clone_string(element["file"].(json.String), context.allocator)
+		sprite.atlas_index = int(element["atlas_index"].(json.Float))
 
 		sprite.source = {
 			x      = f32(element_source["x"].(json.Float)),
@@ -227,13 +228,12 @@ LoadProject :: proc(filename: string) -> (Project, Error) {
 		}
 
 		array := element["origin"].(json.Array)
-
 		sprite.origin = {f32(array[0].(json.Float)), f32(array[1].(json.Float))}
 
 		append(&new_project.sprites, sprite)
 	}
 
-	GenerateAtlas(&new_project, 0)
+	for _, index in new_project.atlas do GenerateAtlas(&new_project, index)
 
 	return new_project, .None
 }
@@ -260,7 +260,6 @@ UnloadProject :: proc(project: ^Project) {
 
 		delete(atlas.name)
 	}
-
 	delete(project.atlas)
 
 	rl.UnloadTexture(project.background)
@@ -295,14 +294,13 @@ WriteProject :: proc(project: ^Project) -> Error {
 	defer delete(project_to_write.sprites)
 
 	for atlas in project.atlas {
-		rl.TraceLog(.INFO, "ATLAS: %s", atlas.name)
 		append(&project_to_write.atlas, atlas.name)
 	}
 	defer delete(project_to_write.atlas)
 
 	options: json.Marshal_Options = {
-		pretty     = true,
 		use_spaces = true,
+		pretty     = true,
 		spaces     = 4,
 	}
 
