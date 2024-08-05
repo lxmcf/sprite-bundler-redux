@@ -8,6 +8,7 @@ import rl "vendor:raylib"
 
 import "bundler:core"
 import "bundler:screens"
+import "bundler:util"
 
 FPS_MINIMUM :: 60
 WINDOW_WIDTH :: 1280
@@ -71,9 +72,7 @@ main :: proc() {
 	if !os.is_dir("projects") do os.make_directory("projects")
 
 	project_directory, project_file, project_assets := core.GetProjectFilenames(TEST_PROJECT)
-	defer delete(project_directory)
-	defer delete(project_file)
-	defer delete(project_assets)
+	defer util.DeleteStrings(project_directory, project_file, project_assets)
 
 	core.CreateNewProject(TEST_PROJECT, 1024, true, true)
 	project, _ := core.LoadProject(project_file)
@@ -93,6 +92,7 @@ main :: proc() {
 		screens.DrawEditor(project)
 
 		when ODIN_DEBUG do DebugDrawFPS()
+		free_all(context.temp_allocator)
 	}
 
 	free_all(context.temp_allocator)

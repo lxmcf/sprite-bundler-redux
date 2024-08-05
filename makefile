@@ -27,6 +27,12 @@ run: build
 	./$(EXE)
 
 clean:
-	rm -f ./$(EXE)
-	rm -f *.dat
+ifeq ($(OS), Windows_NT)
+	rmdir /s projects
+
+	del $(EXE)$(EXE_EXT) *.dat
+else
 	rm -rf projects
+
+	rm -f ./$(EXE)$(EXE_EXT) *.dat
+endif

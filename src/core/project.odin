@@ -8,10 +8,13 @@ import "core:strings"
 
 import rl "vendor:raylib"
 
-DEFAULT_PROJECT_DIRECTORY :: "projects"
-DEFAULT_PROJECT_FILENAME :: "project.lspp"
-DEFAULT_PROJECT_ASSETS :: "assets"
+import "bundler:util"
 
+DEFAULT_PROJECT_DIRECTORY :: #config(CUSTOM_PROJECT_DIRECTORY, "projects")
+DEFAULT_PROJECT_FILENAME :: #config(CUSTOM_PROJECT_FILENAME, "project.lspp")
+DEFAULT_PROJECT_ASSETS :: #config(CUSTOM_ASSET_DIRECTORY, "assets")
+
+DEFAULT_ATLAS_NAME :: "atlas"
 CURRENT_PROJECT_VERSION :: 100
 
 Sprite :: struct {
@@ -50,6 +53,7 @@ Project :: struct {
 	version:    int,
 	name:       string,
 	file:       string,
+	directory:  string,
 	background: rl.Texture2D,
 	atlas:      [dynamic]Atlas,
 	config:     struct {
@@ -123,9 +127,7 @@ CreateNewAtlas :: proc(project: ^Project, name: string) {
 
 CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center: bool) -> Error {
 	project_directory, project_file, project_assets := GetProjectFilenames(name, context.temp_allocator)
-	defer delete(project_directory)
-	defer delete(project_file)
-	defer delete(project_assets)
+	defer util.DeleteStrings(project_directory, project_file, project_assets)
 
 	os.make_directory(project_directory)
 	if os.is_file(project_file) do return .Project_Exists
@@ -144,17 +146,15 @@ CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center:
 	}
 
 	empty_atlas: Atlas
-	empty_atlas.name = "atlas"
+	empty_atlas.name = DEFAULT_ATLAS_NAME
 
 	append(&project_to_create.atlas, empty_atlas)
 	defer delete(project_to_create.atlas)
 
-	_ = WriteProject(&project_to_create)
-
-	return .None
+	return WriteProject(&project_to_create)
 }
 
-// NOTE: Should probably just unmarshal this?
+// TODO: Should probably just unmarshal this?
 LoadProject :: proc(filename: string) -> (Project, Error) {
 	new_project: Project
 
@@ -178,6 +178,11 @@ LoadProject :: proc(filename: string) -> (Project, Error) {
 	new_project.version = int(root["version"].(json.Float))
 	new_project.name, _ = json.clone_string(root["name"].(json.String), context.allocator)
 	new_project.file, _ = strings.clone(filename)
+
+	// TODO: Maybe change this...
+	new_project.directory, _ = strings.clone_from_cstring(
+		rl.GetPrevDirectoryPath(strings.unsafe_string_to_cstring(filename)),
+	)
 
 	config := root["config"].(json.Object)
 	new_project.config.assets_dir, _ = json.clone_string(config["assets_dir"].(json.String), context.allocator)
@@ -248,6 +253,7 @@ LoadProject :: proc(filename: string) -> (Project, Error) {
 UnloadProject :: proc(project: ^Project) {
 	delete(project.name)
 	delete(project.file)
+	delete(project.directory)
 
 	delete(project.config.assets_dir)
 

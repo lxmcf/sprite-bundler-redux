@@ -11,7 +11,7 @@ FileMode :: enum {
 
 File :: os.Handle
 
-CreatePath :: proc(items: ..string) -> string {
+CreatePath :: proc(items: []string, allocator := context.allocator) -> string {
 	array: [dynamic]string
 	defer delete(array)
 
@@ -21,7 +21,11 @@ CreatePath :: proc(items: ..string) -> string {
 		append(&array, item)
 	}
 
-	return strings.concatenate(array[:])
+	return strings.concatenate(array[:], allocator)
+}
+
+DeleteStrings :: proc(items: ..string) {
+	for item in items do delete(item)
 }
 
 // Simplification of os.open based on read/write_entire_file

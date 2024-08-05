@@ -50,6 +50,7 @@ HandleShortcuts :: proc(project: ^core.Project) {
 
 		state.camera.offset = screen / 2
 		state.camera.target = {f32(project.config.atlas_size), f32(project.config.atlas_size)} / 2
+
 		state.camera.zoom = 0.5
 	}
 
@@ -72,48 +73,15 @@ HandleShortcuts :: proc(project: ^core.Project) {
 		}
 
 		when ODIN_DEBUG {
-			// Export Image
 			if rl.IsKeyPressed(.E) {
-				rl.ExportImage(project.atlas[state.current_atlas].image, "atlas.png")
-
-				compressed_data_size, raw_data_size: i32
-
-				raw_data := rl.ExportImageToMemory(project.atlas[state.current_atlas].image, ".png", &raw_data_size)
-				compressed_data := rl.CompressData(raw_data, raw_data_size, &compressed_data_size)
-
-				handle, _ := util.OpenFile("test.dat", .WRITE)
-				defer util.CloseFile(handle)
-
-				os.write_string(handle, "LSPP")
-				os.write_ptr(handle, &compressed_data_size, size_of(i32))
-				os.write_ptr(handle, compressed_data, int(compressed_data_size))
+				core.ExportBundle(project^)
 			}
 
 			// Import Image
 			if rl.IsKeyPressed(.R) {
-				handle, _ := util.OpenFile("test.dat", .READ)
-				defer util.CloseFile(handle)
-
-				compressed_data_size, decompressed_data_size: i32
-
-				header := make([]byte, 4, context.temp_allocator)
-
-				os.read(handle, header)
-				os.read_ptr(handle, &compressed_data_size, size_of(compressed_data_size))
-
-				compressed_data := make([]byte, compressed_data_size, context.temp_allocator)
-				os.read(handle, compressed_data)
-
-				decompressed_data := rl.DecompressData(
-					raw_data(compressed_data),
-					compressed_data_size,
-					&decompressed_data_size,
+				core.ImportBundle(
+					util.CreatePath({project.directory, "export", "bundle.lspx"}, context.temp_allocator),
 				)
-
-				image := rl.LoadImageFromMemory(".png", decompressed_data, decompressed_data_size)
-				defer rl.UnloadImage(image)
-
-				rl.ExportImage(image, "decomp.png")
 			}
 		}
 	}
@@ -144,7 +112,7 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 						context.temp_allocator,
 					)
 
-					new_path := util.CreatePath(project.config.assets_dir, string(new_filename))
+					new_path := util.CreatePath({project.config.assets_dir, string(new_filename)})
 
 					path = strings.unsafe_string_to_cstring(new_path)
 
@@ -152,7 +120,7 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 				}
 
 				sprite: core.Sprite = {
-					name        = strings.clone_from_cstring(rl.GetFileName(path)),
+					name        = strings.clone_from_cstring(rl.GetFileNameWithoutExt(path)),
 					file        = strings.clone_from_cstring(path),
 					atlas_index = state.current_atlas,
 					image       = texture,
