@@ -2,10 +2,109 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-        "collections": {
-            "version": {
-                "type": "integer",
-                "description": "The project version '110' meaning 1.1.0"
+        "version": {
+            "type": "integer",
+            "default": 100,
+            "description": "Project version 100 == 1.0.0, 125 == 1.2.5"
+        },
+        "name": {
+            "type": "string",
+            "default": "Hello World",
+            "description": "The project name"
+        },
+        "atlas": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "default": "atlas",
+                "description": "The name of an atlas"
+            }
+        },
+        "config": {
+            "type": "object",
+            "properties": {
+                "copy_files": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Turns on file copying when adding new sprites (Will copy file to 'assets' directory)"
+                },
+                "auto_center": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Turns on origin auto centering for new sprites"
+                },
+                "atlas_size": {
+                    "type": "integer",
+                    "default": 1024,
+                    "description": "Size of texture atlas"
+                },
+                "assets_dir": {
+                    "type": "string",
+                    "default": "projects/Hello World/assets",
+                    "description": "The folder the application will copy assets to"
+                }
+            }
+        },
+        "sprites": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "file": {
+                        "type": "string"
+                    },
+                    "atlas_index": {
+                        "type": "integer"
+                    },
+                    "source": {
+                        "type": "object",
+                        "properties": {
+                            "x": {
+                                "type": "integer"
+                            },
+                            "y": {
+                                "type": "integer"
+                            },
+                            "width": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "origin": {
+                        "type": "array"
+                    },
+                    "animation": {
+                        "type": "object",
+                        "properties": {
+                            "frames": {
+                                "type": "array",
+                                "properties": {
+                                    "x": {
+                                        "type": "integer"
+                                    },
+                                    "y": {
+                                        "type": "integer"
+                                    },
+                                    "width": {
+                                        "type": "integer"
+                                    },
+                                    "height": {
+                                        "type": "integer"
+                                    }
+                                }
+                            },
+                            "speed": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                }
             }
         }
     }

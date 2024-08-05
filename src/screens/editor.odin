@@ -2,6 +2,7 @@ package screens
 
 import "core:os"
 import "core:slice"
+import "core:strconv"
 import "core:strings"
 
 import rl "vendor:raylib"
@@ -133,8 +134,17 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 				texture := rl.LoadImage(path)
 
 				if project.config.copy_files {
-					current_filename := rl.GetFileName(path)
-					new_path := util.CreatePath(project.assets, string(current_filename))
+					buffer: [4]u8
+					result := strconv.itoa(buffer[:], len(project.sprites))
+					current_filename := rl.GetFileNameWithoutExt(path)
+					current_extension := rl.GetFileExtension(path)
+
+					new_filename := strings.concatenate(
+						{string(current_filename), "_", result, string(current_extension)},
+						context.temp_allocator,
+					)
+
+					new_path := util.CreatePath(project.config.assets_dir, string(new_filename))
 
 					path = strings.unsafe_string_to_cstring(new_path)
 
@@ -149,7 +159,7 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 					source      = {0, 0, f32(texture.width), f32(texture.height)},
 				}
 
-				if project.config.auto_centre {
+				if project.config.auto_center {
 					sprite.origin = {sprite.source.width, sprite.source.height} / 2
 				}
 
@@ -197,12 +207,14 @@ PackSprites :: proc(project: ^core.Project) {
 
 	valignment, texture_placed := f32(project.config.atlas_size), 0
 
+	// TODO: Wrap this in yet another loop to only loop over a slice of each atlas index
+	// NOTE: Should only impact performance when using 'A LOT' of sprites
 	for sprite in project.sprites {
 		if sprite.source.height < valignment do valignment = sprite.source.height
 	}
 
 	// NOTE: I have no idea why I need a pointer... From a pointer... It doesn't sort correctly otherwise
-	for &sprite in project.sprites {
+	for &sprite, index in project.sprites {
 		times_looped := 0
 
 		current_rectangle := &sprite.source
@@ -223,10 +235,21 @@ PackSprites :: proc(project: ^core.Project) {
 				}
 			}
 		}
-
 		rl.TraceLog(.DEBUG, "Sprite [%s] looped %d times", sprite.name, times_looped)
 
-		texture_placed += 1
+		within_y := int(current_rectangle.y + current_rectangle.height) <= project.config.atlas_size
+		if !within_y {
+			rl.TraceLog(.DEBUG, "DELETE: Deleting sprite[%d] %s", index, sprite.name)
+			os.remove(sprite.file)
+
+			delete(sprite.name)
+			delete(sprite.file)
+
+			rl.UnloadImage(sprite.image)
+			unordered_remove(&project.sprites, index)
+		} else {
+			texture_placed += 1
+		}
 	}
 
 	rl.TraceLog(.DEBUG, "Sorted %d textures!", texture_placed)
@@ -263,7 +286,7 @@ DrawEditor :: proc(project: core.Project) {
 		}
 	}
 
-	rl.DrawText(strings.unsafe_string_to_cstring(project.atlas[state.current_atlas].name), 0, -40, 40, rl.WHITE)
+	rl.DrawText(strings.unsafe_string_to_cstring(project.atlas[state.current_atlas].name), 0, -80, 80, rl.WHITE)
 }
 
 UnloadEditor :: proc() {}

@@ -50,12 +50,12 @@ Project :: struct {
 	version:    int,
 	name:       string,
 	file:       string,
-	assets:     string,
 	background: rl.Texture2D,
 	atlas:      [dynamic]Atlas,
 	config:     struct {
+		assets_dir:  string,
 		copy_files:  bool,
-		auto_centre: bool,
+		auto_center: bool,
 		atlas_size:  int,
 	},
 	sprites:    [dynamic]Sprite,
@@ -65,11 +65,11 @@ Project :: struct {
 WriteableProject :: struct {
 	version: int,
 	name:    string,
-	assets:  string,
 	atlas:   [dynamic]string,
 	config:  struct {
+		assets_dir:  string,
 		copy_files:  bool,
-		auto_centre: bool,
+		auto_center: bool,
 		atlas_size:  int,
 	},
 	sprites: [dynamic]WriteableSprite,
@@ -121,7 +121,7 @@ CreateNewAtlas :: proc(project: ^Project, name: string) {
 	append(&project.atlas, new_atlas)
 }
 
-CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_centre: bool) -> Error {
+CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center: bool) -> Error {
 	project_directory, project_file, project_assets := GetProjectFilenames(name, context.temp_allocator)
 	defer delete(project_directory)
 	defer delete(project_file)
@@ -135,8 +135,12 @@ CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_centre:
 		version = CURRENT_PROJECT_VERSION,
 		name = name,
 		file = project_file,
-		assets = project_assets,
-		config = {copy_files = copy_files, auto_centre = auto_centre, atlas_size = atlas_size},
+		config = {
+			assets_dir = project_assets,
+			copy_files = copy_files,
+			auto_center = auto_center,
+			atlas_size = atlas_size,
+		},
 	}
 
 	empty_atlas: Atlas
@@ -174,10 +178,10 @@ LoadProject :: proc(filename: string) -> (Project, Error) {
 	new_project.version = int(root["version"].(json.Float))
 	new_project.name, _ = json.clone_string(root["name"].(json.String), context.allocator)
 	new_project.file, _ = strings.clone(filename)
-	new_project.assets, _ = json.clone_string(root["assets"].(json.String), context.allocator)
 
 	config := root["config"].(json.Object)
-	new_project.config.auto_centre = config["auto_centre"].(json.Boolean)
+	new_project.config.assets_dir, _ = json.clone_string(config["assets_dir"].(json.String), context.allocator)
+	new_project.config.auto_center = config["auto_center"].(json.Boolean)
 	new_project.config.copy_files = config["copy_files"].(json.Boolean)
 	new_project.config.atlas_size = int(config["atlas_size"].(json.Float))
 
@@ -205,8 +209,8 @@ LoadProject :: proc(filename: string) -> (Project, Error) {
 
 	new_project.background = rl.LoadTextureFromImage(background_image)
 
-	for index in root["sprites"].(json.Array) {
-		element := index.(json.Object)
+	for element, index in root["sprites"].(json.Array) {
+		element := element.(json.Object)
 		element_source := element["source"].(json.Object)
 
 		sprite: Sprite
@@ -221,9 +225,10 @@ LoadProject :: proc(filename: string) -> (Project, Error) {
 			height = f32(element_source["height"].(json.Float)),
 		}
 
-		if os.is_file(element["file"].(json.String)) {
-			sprite.image = rl.LoadImage(strings.unsafe_string_to_cstring(element["file"].(json.String)))
+		if os.is_file(sprite.file) {
+			sprite.image = rl.LoadImage(strings.unsafe_string_to_cstring(sprite.file))
 		} else {
+			rl.TraceLog(.ERROR, "Failed to load file [%s] for sprite [%s, %d]", sprite.file, sprite.name, index)
 			sprite.image = rl.GenImageColor(i32(sprite.source.width), i32(sprite.source.height), rl.MAGENTA)
 		}
 
@@ -235,13 +240,16 @@ LoadProject :: proc(filename: string) -> (Project, Error) {
 
 	for _, index in new_project.atlas do GenerateAtlas(&new_project, index)
 
+	rl.SetWindowTitle(strings.unsafe_string_to_cstring(new_project.name))
+
 	return new_project, .None
 }
 
 UnloadProject :: proc(project: ^Project) {
 	delete(project.name)
 	delete(project.file)
-	delete(project.assets)
+
+	delete(project.config.assets_dir)
 
 	for sprite, index in project.sprites {
 		rl.TraceLog(.DEBUG, "DELETE: Deleting sprite[%d] %s", index, sprite.name)
@@ -271,10 +279,10 @@ WriteProject :: proc(project: ^Project) -> Error {
 	project_to_write := WriteableProject {
 		version = project.version,
 		name = project.name,
-		assets = project.assets,
 		config = {
+			assets_dir = project.config.assets_dir,
 			copy_files = project.config.copy_files,
-			auto_centre = project.config.auto_centre,
+			auto_center = project.config.auto_center,
 			atlas_size = project.config.atlas_size,
 		},
 	}
