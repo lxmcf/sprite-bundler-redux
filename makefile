@@ -1,4 +1,4 @@
-EXE := game
+EXE := lspp
 CC := odin
 BUILD ?= DEBUG
 
