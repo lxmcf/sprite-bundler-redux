@@ -13,6 +13,10 @@ import "bundler:util"
 DEFAULT_PROJECT_DIRECTORY :: #config(CUSTOM_PROJECT_DIRECTORY, "projects")
 DEFAULT_PROJECT_FILENAME :: #config(CUSTOM_PROJECT_FILENAME, "project.lspp")
 DEFAULT_PROJECT_ASSETS :: #config(CUSTOM_ASSET_DIRECTORY, "assets")
+DEFAULT_PROJECT_SCHEMA :: #config(
+	CUSTOM_PROJECT_SCHEMA,
+	"https://raw.githubusercontent.com/lxmcf/sprite-bundler-redux/main/data/lspp.scheme.json",
+)
 
 DEFAULT_ATLAS_NAME :: "atlas"
 CURRENT_PROJECT_VERSION :: 100
@@ -25,8 +29,8 @@ Sprite :: struct {
 	source:      rl.Rectangle,
 	origin:      rl.Vector2,
 	animation:   struct {
-		frames: [dynamic]rl.Rectangle,
 		speed:  f32,
+		frames: [dynamic]rl.Rectangle,
 	},
 }
 
@@ -38,8 +42,8 @@ WriteableSprite :: struct {
 	source:      rl.Rectangle,
 	origin:      rl.Vector2,
 	animation:   struct {
-		frames: [dynamic]rl.Rectangle,
 		speed:  f32,
+		frames: [dynamic]rl.Rectangle,
 	},
 }
 
@@ -130,8 +134,8 @@ CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center:
 	defer util.DeleteStrings(project_directory, project_file, project_assets)
 
 	os.make_directory(project_directory)
+	os.make_directory(project_assets)
 	if os.is_file(project_file) do return .Project_Exists
-	if copy_files do os.make_directory(project_assets)
 
 	project_to_create: Project = {
 		version = CURRENT_PROJECT_VERSION,

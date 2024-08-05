@@ -74,7 +74,7 @@ main :: proc() {
 	project_directory, project_file, project_assets := core.GetProjectFilenames(TEST_PROJECT)
 	defer util.DeleteStrings(project_directory, project_file, project_assets)
 
-	core.CreateNewProject(TEST_PROJECT, 1024, true, true)
+	core.CreateNewProject(TEST_PROJECT, 1024, false, false)
 	project, _ := core.LoadProject(project_file)
 
 	defer core.UnloadProject(&project)

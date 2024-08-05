@@ -96,7 +96,7 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 		if files.count > 0 {
 			for i in 0 ..< files.count {
 				path := files.paths[i]
-				defer delete(path)
+				defer if project.config.copy_files do delete(path)
 
 				if !rl.IsFileExtension(path, ".png") do continue
 				texture := rl.LoadImage(path)
@@ -208,13 +208,18 @@ PackSprites :: proc(project: ^core.Project) {
 		within_y := int(current_rectangle.y + current_rectangle.height) <= project.config.atlas_size
 		if !within_y {
 			rl.TraceLog(.DEBUG, "DELETE: Deleting sprite[%d] %s", index, sprite.name)
-			os.remove(sprite.file)
+
+			if project.config.copy_files {
+				error := os.remove(sprite.file)
+
+				rl.TraceLog(.DEBUG, "Delete error ID [%d]", error)
+			}
 
 			delete(sprite.name)
 			delete(sprite.file)
 
 			rl.UnloadImage(sprite.image)
-			unordered_remove(&project.sprites, index)
+			ordered_remove(&project.sprites, index)
 		} else {
 			texture_placed += 1
 		}
