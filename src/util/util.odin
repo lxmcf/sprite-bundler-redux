@@ -61,36 +61,48 @@ GetPadding :: proc(data_length, alignment: int) -> int {
 }
 
 WriteAligned :: proc(handle: File, data: []byte, alignment: int = 0) -> (int, os.Error) {
-	padding := GetPadding(len(data), alignment)
+	padding: int
 	bytes_written, error := os.write(handle, data)
 
-	if padding > 0 {
-		bytes := make([]byte, padding, context.temp_allocator)
-		os.write(handle, bytes)
+	if alignment > 0 {
+		padding = GetPadding(len(data), alignment)
+
+		if padding > 0 {
+			bytes := make([]byte, padding, context.temp_allocator)
+			os.write(handle, bytes)
+		}
 	}
 
 	return bytes_written + padding, error
 }
 
 WriteStringAligned :: proc(handle: File, data: string, alignment: int = 0) -> (int, os.Error) {
-	padding := GetPadding(len(data), alignment)
+	padding: int
 	bytes_written, error := os.write_string(handle, data)
 
-	if padding > 0 {
-		bytes := make([]byte, padding, context.temp_allocator)
-		os.write(handle, bytes)
+	if alignment > 0 {
+		padding = GetPadding(len(data), alignment)
+
+		if padding > 0 {
+			bytes := make([]byte, padding, context.temp_allocator)
+			os.write(handle, bytes)
+		}
 	}
 
 	return bytes_written + padding, error
 }
 
 WritePtrAligned :: proc(handle: File, data: rawptr, length: int, alignment: int = 0) -> (int, os.Error) {
-	padding := GetPadding(length, alignment)
+	padding: int
 	bytes_written, error := os.write_ptr(handle, data, length)
 
-	if padding > 0 {
-		bytes := make([]byte, padding, context.temp_allocator)
-		os.write(handle, bytes)
+	if alignment > 0 {
+		padding = GetPadding(length, alignment)
+
+		if padding > 0 {
+			bytes := make([]byte, padding, context.temp_allocator)
+			os.write(handle, bytes)
+		}
 	}
 
 	return bytes_written + padding, error

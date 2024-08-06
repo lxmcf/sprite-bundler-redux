@@ -12,7 +12,7 @@ BUNDLE_FILE :: #config(CUSTOM_BUNDLE_FILE, "bundle.lspx")
 BUNDLE_ATLAS_HEADER :: #config(CUSTOM_ATLAS_HEADER, "ATLS")
 BUNDLE_SPRITE_HEADER :: #config(CUSTOM_SPRITE_HEADER, "SPRT")
 
-BUNDLE_BYTE_ALIGNMENT :: 4
+BUNDLE_BYTE_ALIGNMENT :: 0
 
 // TODO: Align to 4 bytes
 ExportBundle :: proc(project: Project) {
@@ -32,15 +32,15 @@ ExportBundle :: proc(project: Project) {
 	// [4 BYTES] Bundle version
 	// [4 BYTES] Texture atlas count
 	// [4 BYTES] Sprite count
-	os.write_string(handle, BUNDLE_HEADER[:4])
-	os.write_ptr(handle, &project_version, size_of(i32))
-	os.write_ptr(handle, &atlas_count, size_of(i32))
-	os.write_ptr(handle, &sprite_count, size_of(i32))
+	util.WriteStringAligned(handle, BUNDLE_HEADER[:4], BUNDLE_BYTE_ALIGNMENT)
+	util.WritePtrAligned(handle, &project_version, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
+	util.WritePtrAligned(handle, &atlas_count, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
+	util.WritePtrAligned(handle, &sprite_count, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
 
 	// ATLAS'
 	for atlas in project.atlas {
 		// [4 BYTES] FourCC
-		os.write_string(handle, BUNDLE_ATLAS_HEADER[:4])
+		util.WriteStringAligned(handle, BUNDLE_ATLAS_HEADER[:4], BUNDLE_BYTE_ALIGNMENT)
 
 		name_length := i32(len(atlas.name))
 
@@ -54,20 +54,20 @@ ExportBundle :: proc(project: Project) {
 		// ATLAS INFO -> Layout
 		// [4 BYTES] Name length
 		// [^ BYTES] Name
-		os.write_ptr(handle, &name_length, size_of(i32))
-		os.write_string(handle, atlas.name)
+		util.WritePtrAligned(handle, &name_length, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
+		util.WriteStringAligned(handle, atlas.name, BUNDLE_BYTE_ALIGNMENT)
 
 		// ATLAS DATA -> Layout
 		// [4 BYTES] Data size
 		// [^ BYTES]
-		os.write_ptr(handle, &compressed_data_size, size_of(i32))
-		os.write_ptr(handle, compressed_data, int(compressed_data_size))
+		util.WritePtrAligned(handle, &compressed_data_size, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
+		util.WritePtrAligned(handle, compressed_data, int(compressed_data_size), BUNDLE_BYTE_ALIGNMENT)
 	}
 
 	// SPRITES
 	for sprite in project.sprites {
 		// [4 BYTES] FourCC
-		os.write_string(handle, BUNDLE_SPRITE_HEADER[:4])
+		util.WriteStringAligned(handle, BUNDLE_SPRITE_HEADER[:4], BUNDLE_BYTE_ALIGNMENT)
 
 		frame_count := i32(len(sprite.animation.frames))
 		atlas_index := i32(sprite.atlas_index)
@@ -80,26 +80,26 @@ ExportBundle :: proc(project: Project) {
 		// [4 BYTES] Texture atlas index
 		// [4 BYTES] Name length
 		// [^ BYTES] Name
-		os.write_ptr(handle, &frame_count, size_of(i32))
-		os.write_ptr(handle, &atlas_index, size_of(i32))
-		os.write_ptr(handle, &name_length, size_of(i32))
-		os.write_string(handle, sprite.name)
+		util.WritePtrAligned(handle, &frame_count, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
+		util.WritePtrAligned(handle, &atlas_index, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
+		util.WritePtrAligned(handle, &name_length, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
+		util.WriteStringAligned(handle, sprite.name, BUNDLE_BYTE_ALIGNMENT)
 
 		// SOURCE DATA -> Layout
 		// [4 BYTES] X
 		// [4 BYTES] Y
 		// [4 BYTES] Width
 		// [4 BYTES] Height
-		os.write_ptr(handle, &source.x, size_of(f32))
-		os.write_ptr(handle, &source.y, size_of(f32))
-		os.write_ptr(handle, &source.width, size_of(f32))
-		os.write_ptr(handle, &source.height, size_of(f32))
+		util.WritePtrAligned(handle, &source.x, size_of(f32), BUNDLE_BYTE_ALIGNMENT)
+		util.WritePtrAligned(handle, &source.y, size_of(f32), BUNDLE_BYTE_ALIGNMENT)
+		util.WritePtrAligned(handle, &source.width, size_of(f32), BUNDLE_BYTE_ALIGNMENT)
+		util.WritePtrAligned(handle, &source.height, size_of(f32), BUNDLE_BYTE_ALIGNMENT)
 
 		// ORIGIN DATA -> Layout
 		// [4 BYTES] X
 		// [4 BYTES] Y
-		os.write_ptr(handle, &origin.x, size_of(f32))
-		os.write_ptr(handle, &origin.y, size_of(f32))
+		util.WritePtrAligned(handle, &origin.x, size_of(f32), BUNDLE_BYTE_ALIGNMENT)
+		util.WritePtrAligned(handle, &origin.y, size_of(f32), BUNDLE_BYTE_ALIGNMENT)
 
 		for &frame in sprite.animation.frames {
 			// FRAME DATA -> Layout
@@ -107,10 +107,10 @@ ExportBundle :: proc(project: Project) {
 			// [4 BYTES] Y
 			// [4 BYTES] Width
 			// [4 BYTES] Height
-			os.write_ptr(handle, &frame.x, size_of(f32))
-			os.write_ptr(handle, &frame.y, size_of(f32))
-			os.write_ptr(handle, &frame.width, size_of(f32))
-			os.write_ptr(handle, &frame.height, size_of(f32))
+			util.WritePtrAligned(handle, &frame.x, size_of(f32), BUNDLE_BYTE_ALIGNMENT)
+			util.WritePtrAligned(handle, &frame.y, size_of(f32), BUNDLE_BYTE_ALIGNMENT)
+			util.WritePtrAligned(handle, &frame.width, size_of(f32), BUNDLE_BYTE_ALIGNMENT)
+			util.WritePtrAligned(handle, &frame.height, size_of(f32), BUNDLE_BYTE_ALIGNMENT)
 		}
 	}
 }
