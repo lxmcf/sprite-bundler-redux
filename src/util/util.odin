@@ -54,3 +54,44 @@ OpenFile :: proc(filename: string, mode: FileMode, truncate := true) -> (File, b
 CloseFile :: proc(handle: File) -> bool {
 	return os.close(handle) == os.ERROR_NONE
 }
+
+@(private)
+GetPadding :: proc(data_length, alignment: int) -> int {
+	return alignment - (data_length % alignment) % alignment
+}
+
+WriteAligned :: proc(handle: File, data: []byte, alignment: int = 0) -> (int, os.Error) {
+	padding := GetPadding(len(data), alignment)
+	bytes_written, error := os.write(handle, data)
+
+	if padding > 0 {
+		bytes := make([]byte, padding, context.temp_allocator)
+		os.write(handle, bytes)
+	}
+
+	return bytes_written + padding, error
+}
+
+WriteStringAligned :: proc(handle: File, data: string, alignment: int = 0) -> (int, os.Error) {
+	padding := GetPadding(len(data), alignment)
+	bytes_written, error := os.write_string(handle, data)
+
+	if padding > 0 {
+		bytes := make([]byte, padding, context.temp_allocator)
+		os.write(handle, bytes)
+	}
+
+	return bytes_written + padding, error
+}
+
+WritePtrAligned :: proc(handle: File, data: rawptr, length: int, alignment: int = 0) -> (int, os.Error) {
+	padding := GetPadding(length, alignment)
+	bytes_written, error := os.write_ptr(handle, data, length)
+
+	if padding > 0 {
+		bytes := make([]byte, padding, context.temp_allocator)
+		os.write(handle, bytes)
+	}
+
+	return bytes_written + padding, error
+}

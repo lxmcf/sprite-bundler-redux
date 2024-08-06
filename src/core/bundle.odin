@@ -12,6 +12,8 @@ BUNDLE_FILE :: #config(CUSTOM_BUNDLE_FILE, "bundle.lspx")
 BUNDLE_ATLAS_HEADER :: #config(CUSTOM_ATLAS_HEADER, "ATLS")
 BUNDLE_SPRITE_HEADER :: #config(CUSTOM_SPRITE_HEADER, "SPRT")
 
+BUNDLE_BYTE_ALIGNMENT :: 4
+
 // TODO: Align to 4 bytes
 ExportBundle :: proc(project: Project) {
 	export_directory := util.CreatePath({project.directory, "export"}, context.temp_allocator)
