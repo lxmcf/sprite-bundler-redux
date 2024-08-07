@@ -12,9 +12,13 @@ import "bundler:util"
 
 @(private = "file")
 EditorState :: struct {
-	camera:        rl.Camera2D,
-	cursor:        rl.MouseCursor,
-	current_atlas: int,
+	camera:         rl.Camera2D,
+	cursor:         rl.MouseCursor,
+	current_atlas:  int,
+
+	// UI controls
+	save_project:   bool,
+	export_project: bool,
 }
 
 @(private = "file")
@@ -44,6 +48,12 @@ UpdateCamera :: proc() {
 }
 
 @(private)
+HandleEditorActions :: proc(project: ^core.Project) {
+	if state.save_project do core.WriteProject(project)
+	if state.export_project do core.ExportBundle(project^)
+}
+
+@(private)
 HandleShortcuts :: proc(project: ^core.Project) {
 	// Centre camera
 	if rl.IsKeyReleased(.Z) {
@@ -57,13 +67,10 @@ HandleShortcuts :: proc(project: ^core.Project) {
 
 	if rl.IsKeyDown(.LEFT_CONTROL) {
 		// Save Project
-		if rl.IsKeyPressed(.S) {
-			core.WriteProject(project)
-		}
+		if rl.IsKeyPressed(.S) do state.save_project = true
+		if rl.IsKeyPressed(.E) do state.export_project = true
 
-		if rl.IsKeyPressed(.N) {
-			core.CreateNewAtlas(project, "test")
-		}
+		if rl.IsKeyPressed(.N) {core.CreateNewAtlas(project, "test")}
 
 		change_page := int(rl.IsKeyPressed(.RIGHT_BRACKET)) - int(rl.IsKeyPressed(.LEFT_BRACKET))
 		if change_page != 0 {
@@ -74,10 +81,6 @@ HandleShortcuts :: proc(project: ^core.Project) {
 		}
 
 		when ODIN_DEBUG {
-			if rl.IsKeyPressed(.E) {
-				core.ExportBundle(project^)
-			}
-
 			// Import Image
 			if rl.IsKeyPressed(.R) {
 				core.ImportBundle(
@@ -86,6 +89,8 @@ HandleShortcuts :: proc(project: ^core.Project) {
 			}
 		}
 	}
+
+	HandleEditorActions(project)
 }
 
 @(private)
@@ -234,6 +239,8 @@ InitEditor :: proc() {
 }
 
 UpdateEditor :: proc(project: ^core.Project) {
+	HandleEditorActions(project)
+
 	state.cursor = .DEFAULT
 
 	UpdateCamera()
@@ -272,6 +279,30 @@ DrawEditor :: proc(project: core.Project) {
 	}
 
 	rl.DrawText(strings.unsafe_string_to_cstring(project.atlas[state.current_atlas].name), 0, -80, 80, rl.WHITE)
+}
+
+DrawEditorGui :: proc(project: core.Project) {
+	// Set Style
+	rl.GuiSetStyle(.BUTTON, .TEXT_ALIGNMENT, i32(rl.GuiTextAlignment.TEXT_ALIGN_LEFT))
+
+	rl.GuiEnableTooltip()
+	rl.GuiPanel({0, 0, f32(rl.GetScreenWidth()), 32}, nil)
+
+	rl.GuiSetTooltip("Save Project [CTRL + S]")
+	state.save_project = rl.GuiButton({4, 4, 68, 24}, "#2# Save")
+
+	rl.GuiSetTooltip("Export Project [CTRL + E]")
+	state.export_project = rl.GuiButton({76, 4, 68, 24}, "#200# Export")
+
+	anchor: rl.Vector2 = {f32(rl.GetScreenWidth()), 0}
+
+	current_atlas := i32(state.current_atlas)
+	rl.GuiSetTooltip("Change Atlas [CTRL + ANGLE BRACKET]")
+	rl.GuiSpinner({anchor.x - 84, 4, 80, 24}, "Current Atlas: ", &current_atlas, 0, i32(len(project.atlas) - 1), false)
+
+	state.current_atlas = int(current_atlas)
+
+	rl.GuiDisableTooltip()
 }
 
 UnloadEditor :: proc() {}

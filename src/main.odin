@@ -90,6 +90,7 @@ main :: proc() {
 
 		rl.ClearBackground(rl.DARKGRAY)
 		screens.DrawEditor(project)
+		screens.DrawEditorGui(project)
 
 		free_all(context.temp_allocator)
 		when ODIN_DEBUG do DebugDrawFPS()

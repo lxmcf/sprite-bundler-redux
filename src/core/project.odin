@@ -183,7 +183,7 @@ LoadProject :: proc(filename: string) -> (Project, ProjectError) {
 	new_project.name, _ = json.clone_string(root["name"].(json.String), context.allocator)
 	new_project.file, _ = strings.clone(filename)
 
-	// TODO: Maybe change this...
+	// TODO: Maybe change this... (It's a mess)
 	new_project.directory, _ = strings.clone_from_cstring(
 		rl.GetPrevDirectoryPath(strings.unsafe_string_to_cstring(filename)),
 	)
@@ -255,17 +255,12 @@ LoadProject :: proc(filename: string) -> (Project, ProjectError) {
 }
 
 UnloadProject :: proc(project: ^Project) {
-	delete(project.name)
-	delete(project.file)
-	delete(project.directory)
-
-	delete(project.config.assets_dir)
+	util.DeleteStrings(project.name, project.file, project.directory, project.config.assets_dir)
 
 	for sprite, index in project.sprites {
 		rl.TraceLog(.DEBUG, "DELETE: Deleting sprite[%d] %s", index, sprite.name)
 
-		delete(sprite.name)
-		delete(sprite.file)
+		util.DeleteStrings(sprite.name, sprite.file)
 
 		rl.UnloadImage(sprite.image)
 	}
@@ -278,6 +273,7 @@ UnloadProject :: proc(project: ^Project) {
 
 		delete(atlas.name)
 	}
+
 	delete(project.atlas)
 
 	rl.UnloadTexture(project.background)

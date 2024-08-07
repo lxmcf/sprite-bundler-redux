@@ -140,22 +140,22 @@ ImportBundle :: proc(filename: string) -> BundleError {
 
 		if strings.compare(string(chunk_header), BUNDLE_HEADER) == 0 {
 			project_version, atlas_count, sprite_count: i32
-			rl.TraceLog(.DEBUG, "---> Found bundle at %d", i * 4)
+			rl.TraceLog(.DEBUG, "---> Found bundle at block %d", i)
 
 			util.ReadPtrAligned(handle, &project_version, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
 			util.ReadPtrAligned(handle, &atlas_count, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
 			util.ReadPtrAligned(handle, &sprite_count, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
 
-			rl.TraceLog(.DEBUG, "\t\tProject version: %d", project_version)
-			rl.TraceLog(.DEBUG, "\t\tAtlas count:     %d", atlas_count)
-			rl.TraceLog(.DEBUG, "\t\tSprite count:    %d", sprite_count)
+			rl.TraceLog(.DEBUG, "\t\tProject version:  %d", project_version)
+			rl.TraceLog(.DEBUG, "\t\tAtlas count:      %d", atlas_count)
+			rl.TraceLog(.DEBUG, "\t\tSprite count:     %d", sprite_count)
 
 			if sprite_count == 0 do return .No_Sprites
 			if atlas_count == 0 do return .No_Atlas
 		}
 
 		if strings.compare(string(chunk_header), BUNDLE_ATLAS_HEADER) == 0 {
-			rl.TraceLog(.INFO, "---> Found atlas at %d", i * 4)
+			rl.TraceLog(.INFO, "---> Found atlas at block %d", i)
 
 			name_length, decompressed_data_size, compressed_data_size: i32
 			util.ReadPtrAligned(handle, &name_length, size_of(i32))
@@ -165,6 +165,9 @@ ImportBundle :: proc(filename: string) -> BundleError {
 
 			util.ReadPtrAligned(handle, &compressed_data_size, size_of(i32))
 			compressed_data := make([]byte, compressed_data_size, context.temp_allocator)
+
+			rl.TraceLog(.DEBUG, "\t\tAtlas name:       %d", name)
+			rl.TraceLog(.DEBUG, "\t\tData size:        %d", compressed_data_size)
 
 			util.ReadAligned(handle, compressed_data, BUNDLE_BYTE_ALIGNMENT)
 
@@ -176,13 +179,13 @@ ImportBundle :: proc(filename: string) -> BundleError {
 			defer rl.MemFree(decompressed_data)
 
 			// TEMP
-			os.write_entire_file("output.png", decompressed_data[:decompressed_data_size])
+			// os.write_entire_file("output.png", decompressed_data[:decompressed_data_size])
 
 			continue
 		}
 
 		if strings.compare(string(chunk_header), BUNDLE_SPRITE_HEADER) == 0 {
-			rl.TraceLog(.INFO, "---> Found sprite at %d", i * 4)
+			rl.TraceLog(.INFO, "---> Found sprite at block %d", i)
 		}
 	}
 
