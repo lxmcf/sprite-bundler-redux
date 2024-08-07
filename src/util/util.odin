@@ -4,6 +4,8 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 
+import rl "vendor:raylib"
+
 FileMode :: enum {
 	WRITE,
 	READ,
@@ -106,4 +108,38 @@ WritePtrAligned :: proc(handle: File, data: rawptr, length: int, alignment: int 
 	}
 
 	return bytes_written + padding, error
+}
+
+ReadAligned :: proc(handle: File, data: []byte, alignment: int = 0) -> (int, os.Error) {
+	padding: int
+	bytes_read, error := os.read(handle, data)
+
+	if alignment > 0 {
+		padding = GetPadding(len(data), alignment)
+
+		if padding > 0 {
+			bytes := make([]byte, padding, context.temp_allocator)
+			os.read(handle, bytes)
+		}
+	}
+
+	return bytes_read + padding, error
+}
+
+ReadPtrAligned :: proc(handle: File, data: rawptr, length: int, alignment: int = 0) -> (int, os.Error) {
+	padding: int
+	bytes_read, error := os.read_ptr(handle, data, length)
+
+	if alignment > 0 {
+		padding = GetPadding(length, alignment)
+
+		if padding > 0 && padding != 4 {
+			rl.TraceLog(.INFO, "Creating byte buffer of length %d", padding)
+
+			bytes := make([]byte, padding, context.temp_allocator)
+			os.read(handle, bytes)
+		}
+	}
+
+	return bytes_read + padding, error
 }

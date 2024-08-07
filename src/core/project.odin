@@ -83,7 +83,7 @@ WriteableProject :: struct {
 	sprites: [dynamic]WriteableSprite,
 }
 
-Error :: enum {
+ProjectError :: enum {
 	None,
 	Invalid_File,
 	Invalid_Data,
@@ -129,7 +129,7 @@ CreateNewAtlas :: proc(project: ^Project, name: string) {
 	append(&project.atlas, new_atlas)
 }
 
-CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center: bool) -> Error {
+CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center: bool) -> ProjectError {
 	project_directory, project_file, project_assets := GetProjectFilenames(name, context.temp_allocator)
 	defer util.DeleteStrings(project_directory, project_file, project_assets)
 
@@ -159,7 +159,7 @@ CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center:
 }
 
 // TODO: Should probably just unmarshal this?
-LoadProject :: proc(filename: string) -> (Project, Error) {
+LoadProject :: proc(filename: string) -> (Project, ProjectError) {
 	new_project: Project
 
 	data, ok := os.read_entire_file(filename)
@@ -283,7 +283,7 @@ UnloadProject :: proc(project: ^Project) {
 	rl.UnloadTexture(project.background)
 }
 
-WriteProject :: proc(project: ^Project) -> Error {
+WriteProject :: proc(project: ^Project) -> ProjectError {
 	if os.is_file(project.file) do os.rename(project.file, strings.concatenate({project.file, ".bkp"}, context.temp_allocator))
 
 	project_to_write := WriteableProject {
