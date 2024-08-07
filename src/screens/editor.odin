@@ -13,6 +13,7 @@ import "bundler:util"
 @(private = "file")
 EditorState :: struct {
 	camera:        rl.Camera2D,
+	cursor:        rl.MouseCursor,
 	current_atlas: int,
 }
 
@@ -233,10 +234,23 @@ InitEditor :: proc() {
 }
 
 UpdateEditor :: proc(project: ^core.Project) {
+	state.cursor = .DEFAULT
+
 	UpdateCamera()
 
 	HandleShortcuts(project)
 	HandleDroppedFiles(project)
+
+	mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
+	for sprite in project.sprites {
+		if sprite.atlas_index != state.current_atlas do continue
+		if rl.CheckCollisionPointRec(mouse_position, sprite.source) {
+			state.cursor = .POINTING_HAND
+			break
+		}
+	}
+
+	rl.SetMouseCursor(state.cursor)
 }
 
 DrawEditor :: proc(project: core.Project) {
@@ -247,14 +261,12 @@ DrawEditor :: proc(project: core.Project) {
 	rl.DrawTextureV(project.atlas[state.current_atlas].texture, {}, rl.WHITE)
 
 	mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
-	rl.SetMouseCursor(.DEFAULT)
 
 	for sprite in project.sprites {
 		if sprite.atlas_index != state.current_atlas do continue
 
 		if rl.CheckCollisionPointRec(mouse_position, sprite.source) {
 			rl.DrawRectangleLinesEx(sprite.source, 2, rl.RED)
-			rl.SetMouseCursor(.POINTING_HAND)
 			break
 		}
 	}

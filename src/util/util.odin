@@ -4,8 +4,6 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 
-import rl "vendor:raylib"
-
 FileMode :: enum {
 	WRITE,
 	READ,
@@ -59,10 +57,10 @@ CloseFile :: proc(handle: File) -> bool {
 
 @(private)
 GetPadding :: proc(data_length, alignment: int) -> int {
-	return alignment - (data_length % alignment) % alignment
+	return data_length % alignment == 0 ? 0 : alignment - (data_length % alignment) % alignment
 }
 
-WriteAligned :: proc(handle: File, data: []byte, alignment: int = 0) -> (int, os.Error) {
+WriteAligned :: proc(handle: File, data: []byte, alignment: int = 0) -> (int, os.Errno) {
 	padding: int
 	bytes_written, error := os.write(handle, data)
 
@@ -78,7 +76,7 @@ WriteAligned :: proc(handle: File, data: []byte, alignment: int = 0) -> (int, os
 	return bytes_written + padding, error
 }
 
-WriteStringAligned :: proc(handle: File, data: string, alignment: int = 0) -> (int, os.Error) {
+WriteStringAligned :: proc(handle: File, data: string, alignment: int = 0) -> (int, os.Errno) {
 	padding: int
 	bytes_written, error := os.write_string(handle, data)
 
@@ -94,7 +92,7 @@ WriteStringAligned :: proc(handle: File, data: string, alignment: int = 0) -> (i
 	return bytes_written + padding, error
 }
 
-WritePtrAligned :: proc(handle: File, data: rawptr, length: int, alignment: int = 0) -> (int, os.Error) {
+WritePtrAligned :: proc(handle: File, data: rawptr, length: int, alignment: int = 0) -> (int, os.Errno) {
 	padding: int
 	bytes_written, error := os.write_ptr(handle, data, length)
 
@@ -110,7 +108,7 @@ WritePtrAligned :: proc(handle: File, data: rawptr, length: int, alignment: int 
 	return bytes_written + padding, error
 }
 
-ReadAligned :: proc(handle: File, data: []byte, alignment: int = 0) -> (int, os.Error) {
+ReadAligned :: proc(handle: File, data: []byte, alignment: int = 0) -> (int, os.Errno) {
 	padding: int
 	bytes_read, error := os.read(handle, data)
 
@@ -126,16 +124,14 @@ ReadAligned :: proc(handle: File, data: []byte, alignment: int = 0) -> (int, os.
 	return bytes_read + padding, error
 }
 
-ReadPtrAligned :: proc(handle: File, data: rawptr, length: int, alignment: int = 0) -> (int, os.Error) {
+ReadPtrAligned :: proc(handle: File, data: rawptr, length: int, alignment: int = 0) -> (int, os.Errno) {
 	padding: int
 	bytes_read, error := os.read_ptr(handle, data, length)
 
 	if alignment > 0 {
 		padding = GetPadding(length, alignment)
 
-		if padding > 0 && padding != 4 {
-			rl.TraceLog(.INFO, "Creating byte buffer of length %d", padding)
-
+		if padding > 0 {
 			bytes := make([]byte, padding, context.temp_allocator)
 			os.read(handle, bytes)
 		}

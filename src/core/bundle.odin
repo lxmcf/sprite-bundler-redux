@@ -19,9 +19,10 @@ BundleError :: enum {
 	None,
 	Invalid_Alignment,
 	No_Sprites,
+	No_Atlas,
 }
 
-// TODO: Align to 4 bytes
+// TODO: Ignore empty bundles (Causes crashing 100% of the time)
 ExportBundle :: proc(project: Project) -> BundleError {
 	export_directory := util.CreatePath({project.directory, "export"}, context.temp_allocator)
 	os.make_directory(export_directory)
@@ -148,6 +149,9 @@ ImportBundle :: proc(filename: string) -> BundleError {
 			rl.TraceLog(.DEBUG, "\t\tProject version: %d", project_version)
 			rl.TraceLog(.DEBUG, "\t\tAtlas count:     %d", atlas_count)
 			rl.TraceLog(.DEBUG, "\t\tSprite count:    %d", sprite_count)
+
+			if sprite_count == 0 do return .No_Sprites
+			if atlas_count == 0 do return .No_Atlas
 		}
 
 		if strings.compare(string(chunk_header), BUNDLE_ATLAS_HEADER) == 0 {
@@ -161,6 +165,7 @@ ImportBundle :: proc(filename: string) -> BundleError {
 
 			util.ReadPtrAligned(handle, &compressed_data_size, size_of(i32))
 			compressed_data := make([]byte, compressed_data_size, context.temp_allocator)
+
 			util.ReadAligned(handle, compressed_data, BUNDLE_BYTE_ALIGNMENT)
 
 			decompressed_data := rl.DecompressData(
@@ -170,6 +175,7 @@ ImportBundle :: proc(filename: string) -> BundleError {
 			)
 			defer rl.MemFree(decompressed_data)
 
+			// TEMP
 			os.write_entire_file("output.png", decompressed_data[:decompressed_data_size])
 
 			continue
