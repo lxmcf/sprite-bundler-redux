@@ -12,13 +12,14 @@ import "bundler:util"
 
 @(private = "file")
 EditorState :: struct {
-	camera:         rl.Camera2D,
-	cursor:         rl.MouseCursor,
-	current_atlas:  int,
+	camera:          rl.Camera2D,
+	cursor:          rl.MouseCursor,
+	current_atlas:   int,
+	selected_sprite: ^core.Sprite,
 
 	// UI controls
-	save_project:   bool,
-	export_project: bool,
+	save_project:    bool,
+	export_project:  bool,
 }
 
 @(private = "file")
@@ -249,11 +250,22 @@ UpdateEditor :: proc(project: ^core.Project) {
 	HandleDroppedFiles(project)
 
 	mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
-	for sprite in project.sprites {
+	for sprite, index in project.sprites {
 		if sprite.atlas_index != state.current_atlas do continue
+
 		if rl.CheckCollisionPointRec(mouse_position, sprite.source) {
 			state.cursor = .POINTING_HAND
+
+			if rl.IsMouseButtonReleased(.LEFT) {
+				state.selected_sprite = &project.sprites[index]
+			}
 			break
+		}
+	}
+
+	if rl.IsMouseButtonReleased(.LEFT) && state.selected_sprite != nil {
+		if !rl.CheckCollisionPointRec(mouse_position, state.selected_sprite.source) {
+			state.selected_sprite = nil
 		}
 	}
 
@@ -267,14 +279,13 @@ DrawEditor :: proc(project: core.Project) {
 	rl.DrawTextureV(project.background, {}, rl.WHITE)
 	rl.DrawTextureV(project.atlas[state.current_atlas].texture, {}, rl.WHITE)
 
-	mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
-
 	for sprite in project.sprites {
 		if sprite.atlas_index != state.current_atlas do continue
 
-		if rl.CheckCollisionPointRec(mouse_position, sprite.source) {
-			rl.DrawRectangleLinesEx(sprite.source, 2, rl.RED)
-			break
+		if state.selected_sprite != nil {
+			if strings.compare(state.selected_sprite.name, sprite.name) != 0 {
+				rl.DrawRectangleRec(sprite.source, rl.Fade(rl.BLACK, 0.5))
+			}
 		}
 	}
 
@@ -282,6 +293,14 @@ DrawEditor :: proc(project: core.Project) {
 }
 
 DrawEditorGui :: proc(project: core.Project) {
+	if state.selected_sprite != nil {
+		position: rl.Vector2 = {state.selected_sprite.source.x, state.selected_sprite.source.y}
+
+		screen_position := rl.GetWorldToScreen2D(position + state.selected_sprite.origin, state.camera)
+
+		rl.DrawCircleLinesV(screen_position, 8, rl.RED)
+	}
+
 	// Set Style
 	rl.GuiSetStyle(.BUTTON, .TEXT_ALIGNMENT, i32(rl.GuiTextAlignment.TEXT_ALIGN_LEFT))
 
