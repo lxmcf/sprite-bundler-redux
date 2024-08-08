@@ -129,6 +129,10 @@ CreateNewAtlas :: proc(project: ^Project, name: string) {
 	append(&project.atlas, new_atlas)
 }
 
+DeleteAtlas :: proc(project: ^Project, id: int) {
+
+}
+
 CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center: bool) -> ProjectError {
 	project_directory, project_file, project_assets := GetProjectFilenames(name, context.temp_allocator)
 	defer util.DeleteStrings(project_directory, project_file, project_assets)

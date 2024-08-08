@@ -7,6 +7,8 @@ ProjectListItem :: struct {
 
 InitProjectPicker :: proc() {}
 
+UnloadProjectPicker :: proc() {}
+
 UpdateProjectPicker :: proc() {}
 
 DrawProjectPicker :: proc() {}

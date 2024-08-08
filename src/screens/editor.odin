@@ -12,20 +12,68 @@ import "bundler:util"
 
 @(private = "file")
 EditorState :: struct {
-	camera:          rl.Camera2D,
-	cursor:          rl.MouseCursor,
-	current_atlas:   int,
-	selected_sprite: ^core.Sprite,
+	camera:               rl.Camera2D,
+	cursor:               rl.MouseCursor,
+	current_atlas:        int,
+	selected_sprite:      ^core.Sprite,
 
 	// UI controls
-	save_project:    bool,
-	export_project:  bool,
+	save_project:         bool,
+	export_project:       bool,
+	create_new_atlas:     bool,
+	delete_current_atlas: bool,
 }
 
 @(private = "file")
 state: EditorState
 
-@(private)
+// ====== PUBLIC ====== \\
+InitEditor :: proc() {
+	state.camera.zoom = 0.5
+}
+
+UnloadEditor :: proc() {}
+
+UpdateEditor :: proc(project: ^core.Project) {
+	HandleEditorActions(project)
+
+	state.cursor = .DEFAULT
+
+	UpdateCamera()
+
+	HandleShortcuts(project)
+	HandleDroppedFiles(project)
+
+	mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
+	for sprite, index in project.sprites {
+		if sprite.atlas_index != state.current_atlas do continue
+
+		if rl.CheckCollisionPointRec(mouse_position, sprite.source) {
+			state.cursor = .POINTING_HAND
+
+			if rl.IsMouseButtonReleased(.LEFT) {
+				state.selected_sprite = &project.sprites[index]
+			}
+			break
+		}
+	}
+
+	if rl.IsMouseButtonReleased(.LEFT) && state.selected_sprite != nil {
+		if !rl.CheckCollisionPointRec(mouse_position, state.selected_sprite.source) {
+			state.selected_sprite = nil
+		}
+	}
+
+	rl.SetMouseCursor(state.cursor)
+}
+
+DrawEditor :: proc(project: ^core.Project) {
+	DrawMainEditor(project)
+	DrawEditorGui(project)
+}
+
+// ====== PRIVATE ====== \\
+@(private = "file")
 UpdateCamera :: proc() {
 	if rl.IsMouseButtonDown(.MIDDLE) || rl.IsKeyDown(.LEFT_ALT) {
 		delta := rl.GetMouseDelta()
@@ -48,13 +96,24 @@ UpdateCamera :: proc() {
 	}
 }
 
-@(private)
+@(private = "file")
 HandleEditorActions :: proc(project: ^core.Project) {
 	if state.save_project do core.WriteProject(project)
 	if state.export_project do core.ExportBundle(project^)
+	if state.create_new_atlas do core.CreateNewAtlas(project, "Blank Atlas")
+
+	ResetEditorActions()
 }
 
-@(private)
+@(private = "file")
+ResetEditorActions :: proc() {
+	state.export_project = false
+	state.save_project = false
+	state.create_new_atlas = false
+	state.delete_current_atlas = false
+}
+
+@(private = "file")
 HandleShortcuts :: proc(project: ^core.Project) {
 	// Centre camera
 	if rl.IsKeyReleased(.Z) {
@@ -67,11 +126,10 @@ HandleShortcuts :: proc(project: ^core.Project) {
 	}
 
 	if rl.IsKeyDown(.LEFT_CONTROL) {
-		// Save Project
 		if rl.IsKeyPressed(.S) do state.save_project = true
 		if rl.IsKeyPressed(.E) do state.export_project = true
-
-		if rl.IsKeyPressed(.N) {core.CreateNewAtlas(project, "test")}
+		if rl.IsKeyPressed(.N) do state.create_new_atlas = true
+		if rl.IsKeyPressed(.Y) do state.delete_current_atlas = true
 
 		change_page := int(rl.IsKeyPressed(.RIGHT_BRACKET)) - int(rl.IsKeyPressed(.LEFT_BRACKET))
 		if change_page != 0 {
@@ -79,6 +137,8 @@ HandleShortcuts :: proc(project: ^core.Project) {
 
 			if state.current_atlas > len(project.atlas) - 1 do state.current_atlas = 0
 			if state.current_atlas < 0 do state.current_atlas = len(project.atlas) - 1
+
+			state.selected_sprite = nil
 		}
 
 		when ODIN_DEBUG {
@@ -90,11 +150,9 @@ HandleShortcuts :: proc(project: ^core.Project) {
 			}
 		}
 	}
-
-	HandleEditorActions(project)
 }
 
-@(private)
+@(private = "file")
 HandleDroppedFiles :: proc(project: ^core.Project) {
 	if rl.IsFileDropped() {
 		files := rl.LoadDroppedFiles()
@@ -120,7 +178,6 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 					)
 
 					new_path := util.CreatePath({project.config.assets_dir, string(new_filename)})
-
 					path = strings.unsafe_string_to_cstring(new_path)
 
 					rl.ExportImage(texture, path)
@@ -150,12 +207,12 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 	}
 }
 
-@(private)
+@(private = "file")
 AtlasIndexSort :: proc(a, b: core.Sprite) -> bool {
 	return a.atlas_index < b.atlas_index
 }
 
-@(private)
+@(private = "file")
 MassWidthSort :: proc(a, b: core.Sprite) -> bool {
 	if a.atlas_index != b.atlas_index do return false
 
@@ -175,7 +232,7 @@ MassWidthSort :: proc(a, b: core.Sprite) -> bool {
 	return mass_a > mass_b
 }
 
-@(private)
+@(private = "file")
 PackSprites :: proc(project: ^core.Project) {
 	slice.stable_sort_by(project.sprites[:], AtlasIndexSort)
 	slice.stable_sort_by(project.sprites[:], MassWidthSort)
@@ -235,44 +292,8 @@ PackSprites :: proc(project: ^core.Project) {
 	rl.TraceLog(.DEBUG, "Sorted %d textures!", texture_placed)
 }
 
-InitEditor :: proc() {
-	state.camera.zoom = 0.5
-}
-
-UpdateEditor :: proc(project: ^core.Project) {
-	HandleEditorActions(project)
-
-	state.cursor = .DEFAULT
-
-	UpdateCamera()
-
-	HandleShortcuts(project)
-	HandleDroppedFiles(project)
-
-	mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
-	for sprite, index in project.sprites {
-		if sprite.atlas_index != state.current_atlas do continue
-
-		if rl.CheckCollisionPointRec(mouse_position, sprite.source) {
-			state.cursor = .POINTING_HAND
-
-			if rl.IsMouseButtonReleased(.LEFT) {
-				state.selected_sprite = &project.sprites[index]
-			}
-			break
-		}
-	}
-
-	if rl.IsMouseButtonReleased(.LEFT) && state.selected_sprite != nil {
-		if !rl.CheckCollisionPointRec(mouse_position, state.selected_sprite.source) {
-			state.selected_sprite = nil
-		}
-	}
-
-	rl.SetMouseCursor(state.cursor)
-}
-
-DrawEditor :: proc(project: core.Project) {
+@(private = "file")
+DrawMainEditor :: proc(project: ^core.Project) {
 	rl.BeginMode2D(state.camera)
 	defer rl.EndMode2D()
 
@@ -292,13 +313,39 @@ DrawEditor :: proc(project: core.Project) {
 	rl.DrawText(strings.unsafe_string_to_cstring(project.atlas[state.current_atlas].name), 0, -80, 80, rl.WHITE)
 }
 
-DrawEditorGui :: proc(project: core.Project) {
+// TEMP: May rewrite some of the needed raygui components to avoid so much casting
+@(private = "file")
+DrawEditorGui :: proc(project: ^core.Project) {
 	if state.selected_sprite != nil {
 		position: rl.Vector2 = {state.selected_sprite.source.x, state.selected_sprite.source.y}
 
-		screen_position := rl.GetWorldToScreen2D(position + state.selected_sprite.origin, state.camera)
+		adjusted_position: rl.Vector2 = rl.GetWorldToScreen2D(position, state.camera)
 
-		rl.DrawCircleLinesV(screen_position, 8, rl.RED)
+		scaled_rect_size: rl.Vector2 =
+			{state.selected_sprite.source.width, state.selected_sprite.source.height} * state.camera.zoom
+
+		rl.DrawRectangleLinesEx(
+			{adjusted_position.x, adjusted_position.y, scaled_rect_size.x, scaled_rect_size.y},
+			1,
+			rl.RED,
+		)
+
+		position_origin := rl.GetWorldToScreen2D(position + state.selected_sprite.origin, state.camera)
+		rl.DrawCircleLinesV(position_origin, 4, rl.RED)
+
+		if !rl.Vector2Equals(state.selected_sprite.origin, {}) {
+			rl.DrawLineV(
+				{adjusted_position.x, position_origin.y},
+				{adjusted_position.x + scaled_rect_size.x, position_origin.y},
+				rl.Fade(rl.RED, 0.5),
+			)
+
+			rl.DrawLineV(
+				{position_origin.x, adjusted_position.y},
+				{position_origin.x, adjusted_position.y + scaled_rect_size.y},
+				rl.Fade(rl.RED, 0.5),
+			)
+		}
 	}
 
 	// Set Style
@@ -308,20 +355,37 @@ DrawEditorGui :: proc(project: core.Project) {
 	rl.GuiPanel({0, 0, f32(rl.GetScreenWidth()), 32}, nil)
 
 	rl.GuiSetTooltip("Save Project [CTRL + S]")
-	state.save_project = rl.GuiButton({4, 4, 68, 24}, "#2# Save")
+	if rl.GuiButton({4, 4, 68, 24}, "#2# Save") do state.save_project = true
 
 	rl.GuiSetTooltip("Export Project [CTRL + E]")
-	state.export_project = rl.GuiButton({76, 4, 68, 24}, "#200# Export")
+	if rl.GuiButton({76, 4, 68, 24}, "#200# Export") do state.export_project = true
 
 	anchor: rl.Vector2 = {f32(rl.GetScreenWidth()), 0}
 
+	rl.GuiSetTooltip("Delete Current Atlas [CTRL + Y]")
+	if rl.GuiButton({anchor.x - 72, 4, 68, 24}, "#143# Delete") do state.delete_current_atlas = true
+
+	rl.GuiSetTooltip("Create New Atlas [CTRL + N]")
+	if rl.GuiButton({anchor.x - 144, 4, 68, 24}, "#197# Create") do state.create_new_atlas = true
+
 	current_atlas := i32(state.current_atlas)
 	rl.GuiSetTooltip("Change Atlas [CTRL + ANGLE BRACKET]")
-	rl.GuiSpinner({anchor.x - 84, 4, 80, 24}, "Current Atlas: ", &current_atlas, 0, i32(len(project.atlas) - 1), false)
+	rl.GuiSpinner(
+		{anchor.x - 224, 4, 76, 24},
+		"Current Atlas: ",
+		&current_atlas,
+		0,
+		i32(len(project.atlas) - 1),
+		false,
+	)
 
-	state.current_atlas = int(current_atlas)
+	if current_atlas != i32(state.current_atlas) {
+		state.current_atlas = int(current_atlas)
+		state.selected_sprite = nil
+	}
 
 	rl.GuiDisableTooltip()
-}
 
-UnloadEditor :: proc() {}
+	HandleEditorActions(project)
+	ResetEditorActions()
+}
