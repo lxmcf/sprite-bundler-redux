@@ -101,6 +101,7 @@ HandleEditorActions :: proc(project: ^core.Project) {
 	if state.save_project do core.WriteProject(project)
 	if state.export_project do core.ExportBundle(project^)
 	if state.create_new_atlas do core.CreateNewAtlas(project, "Blank Atlas")
+	if state.delete_current_atlas do rl.TraceLog(.ERROR, "NOT YET ADDED")
 
 	ResetEditorActions()
 }
