@@ -1,9 +1,7 @@
 package core
 
 import "core:encoding/json"
-import "core:fmt"
 import "core:os"
-import "core:path/filepath"
 import "core:strings"
 
 import rl "vendor:raylib"
@@ -14,318 +12,208 @@ DEFAULT_PROJECT_DIRECTORY :: #config(CUSTOM_PROJECT_DIRECTORY, "projects")
 DEFAULT_PROJECT_FILENAME :: #config(CUSTOM_PROJECT_FILENAME, "project.lspp")
 DEFAULT_PROJECT_ASSETS :: #config(CUSTOM_ASSET_DIRECTORY, "assets")
 DEFAULT_PROJECT_SCHEMA :: #config(
-	CUSTOM_PROJECT_SCHEMA,
-	"https://raw.githubusercontent.com/lxmcf/sprite-bundler-redux/main/data/lspp.scheme.json",
+    CUSTOM_PROJECT_SCHEMA,
+    "https://raw.githubusercontent.com/lxmcf/sprite-bundler-redux/main/data/lspp.scheme.json",
 )
 
 DEFAULT_ATLAS_NAME :: "atlas"
 CURRENT_PROJECT_VERSION :: 100
 
-Sprite :: struct {
-	name:        string,
-	file:        string,
-	atlas_index: int,
-	image:       rl.Image,
-	source:      rl.Rectangle,
-	origin:      rl.Vector2,
-	animation:   struct {
-		speed:  f32,
-		frames: [dynamic]rl.Rectangle,
-	},
-}
-
-@(private)
-WriteableSprite :: struct {
-	name:        string,
-	file:        string,
-	atlas_index: int,
-	source:      rl.Rectangle,
-	origin:      rl.Vector2,
-	animation:   struct {
-		speed:  f32,
-		frames: [dynamic]rl.Rectangle,
-	},
-}
-
-Atlas :: struct {
-	name:    string,
-	image:   rl.Image,
-	texture: rl.Texture2D,
-}
-
 Project :: struct {
-	version:    int,
-	name:       string,
-	file:       string,
-	directory:  string,
-	background: rl.Texture2D,
-	atlas:      [dynamic]Atlas,
-	config:     struct {
-		assets_dir:  string,
-		copy_files:  bool,
-		auto_center: bool,
-		atlas_size:  int,
-	},
-	sprites:    [dynamic]Sprite,
+    version:    int,
+    name:       string,
+    file:       string,
+    directory:  string,
+    background: rl.Texture2D,
+    atlas:      [dynamic]Atlas,
+    config:     struct {
+        assets_dir:  string,
+        copy_files:  bool,
+        auto_center: bool,
+        atlas_size:  int,
+    },
 }
 
 @(private)
 WriteableProject :: struct {
-	version: int,
-	name:    string,
-	atlas:   [dynamic]string,
-	config:  struct {
-		assets_dir:  string,
-		copy_files:  bool,
-		auto_center: bool,
-		atlas_size:  int,
-	},
-	sprites: [dynamic]WriteableSprite,
+    version: int,
+    name:    string,
+    atlas:   [dynamic]WriteableAtlas,
+    config:  struct {
+        assets_dir:  string,
+        copy_files:  bool,
+        auto_center: bool,
+        atlas_size:  int,
+    },
 }
 
 ProjectError :: enum {
-	None,
-	Invalid_File,
-	Invalid_Data,
-	Project_Exists,
-	Project_Newer,
-	Project_Older,
-	Failed_Serialisation,
+    None,
+    Invalid_File,
+    Invalid_Data,
+    Project_Exists,
+    Project_Newer,
+    Project_Older,
+    Failed_Serialisation,
 }
 
-GetProjectFilenames :: proc(name: string, allocator := context.allocator) -> (string, string, string) {
-	project_directory := strings.concatenate({DEFAULT_PROJECT_DIRECTORY, filepath.SEPARATOR_STRING, name})
-	project_file := strings.concatenate({project_directory, filepath.SEPARATOR_STRING, DEFAULT_PROJECT_FILENAME})
-	project_assets := strings.concatenate({project_directory, filepath.SEPARATOR_STRING, DEFAULT_PROJECT_ASSETS})
+@(private)
+ProjectToWriteable :: proc(project: Project) -> WriteableProject {
+    writable: WriteableProject = {
+        version = project.version,
+        name = project.name,
+        config = {
+            assets_dir = project.config.assets_dir,
+            copy_files = project.config.copy_files,
+            auto_center = project.config.auto_center,
+            atlas_size = project.config.atlas_size,
+        },
+    }
 
-	return project_directory, project_file, project_assets
+    for atlas in project.atlas {
+        append(&writable.atlas, ToWriteable(atlas))
+    }
+
+    return writable
 }
 
-GenerateAtlas :: proc(project: ^Project, index: int) {
-	rl.ImageClearBackground(&project.atlas[index].image, rl.BLANK)
+@(private)
+ProjectToReadable :: proc(project: WriteableProject) -> Project {
+    dir, file, _ := GetProjectFilenames(project.name, allocator = context.temp_allocator)
 
-	for sprite in project.sprites {
-		if sprite.atlas_index != index do continue
 
-		rl.ImageDraw(
-			&project.atlas[index].image,
-			sprite.image,
-			{0, 0, sprite.source.width, sprite.source.height},
-			sprite.source,
-			rl.WHITE,
-		)
-	}
+    readable: Project = {
+        version = project.version,
+        name = strings.clone(project.name),
+        file = strings.clone(file),
+        directory = strings.clone(dir),
+        config = {
+            assets_dir = strings.clone(project.config.assets_dir),
+            copy_files = project.config.copy_files,
+            auto_center = project.config.auto_center,
+            atlas_size = project.config.atlas_size,
+        },
+    }
 
-	rl.UnloadTexture(project.atlas[index].texture)
-	project.atlas[index].texture = rl.LoadTextureFromImage(project.atlas[index].image)
+    background_image := rl.GenImageChecked(
+        i32(readable.config.atlas_size),
+        i32(readable.config.atlas_size),
+        i32(readable.config.atlas_size) / 32,
+        i32(readable.config.atlas_size) / 32,
+        rl.LIGHTGRAY,
+        rl.GRAY,
+    )
+    defer rl.UnloadImage(background_image)
+
+    readable.background = rl.LoadTextureFromImage(background_image)
+
+    for atlas in project.atlas {
+        append(&readable.atlas, ToReadable(atlas))
+    }
+
+    return readable
 }
 
-CreateNewAtlas :: proc(project: ^Project, name: string) {
-	new_atlas: Atlas
-	new_atlas.name = strings.clone(name)
-	new_atlas.image = rl.GenImageColor(i32(project.config.atlas_size), i32(project.config.atlas_size), rl.BLANK)
-	new_atlas.texture = rl.LoadTextureFromImage(new_atlas.image)
+@(private)
+UnloadWriteableProject :: proc(project: ^WriteableProject) {
+    for &atlas in project.atlas do UnloadWriteable(&atlas)
 
-	append(&project.atlas, new_atlas)
+    delete(project.atlas)
 }
-
-// TODO: Store sprites in atlas rather than 1 list to make it easier to delete an atlas
-DeleteAtlas :: proc(project: ^Project, id: int) {}
 
 CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center: bool) -> ProjectError {
-	project_directory, project_file, project_assets := GetProjectFilenames(name, context.temp_allocator)
-	defer util.DeleteStrings(project_directory, project_file, project_assets)
+    project_directory, project_file, project_assets := GetProjectFilenames(name, context.temp_allocator)
 
-	os.make_directory(project_directory)
-	os.make_directory(project_assets)
-	if os.is_file(project_file) do return .Project_Exists
+    os.make_directory(project_directory)
+    os.make_directory(project_assets)
+    if os.is_file(project_file) do return .Project_Exists
 
-	project_to_create: Project = {
-		version = CURRENT_PROJECT_VERSION,
-		name = name,
-		file = project_file,
-		config = {
-			assets_dir = project_assets,
-			copy_files = copy_files,
-			auto_center = auto_center,
-			atlas_size = atlas_size,
-		},
-	}
+    project_to_create: Project = {
+        version = CURRENT_PROJECT_VERSION,
+        name = name,
+        file = project_file,
+        config = {
+            assets_dir = project_assets,
+            copy_files = copy_files,
+            auto_center = auto_center,
+            atlas_size = atlas_size,
+        },
+    }
 
-	empty_atlas: Atlas
-	empty_atlas.name = DEFAULT_ATLAS_NAME
+    CreateNewAtlas(&project_to_create, DEFAULT_ATLAS_NAME, false)
+    defer delete(project_to_create.atlas)
 
-	append(&project_to_create.atlas, empty_atlas)
-	defer delete(project_to_create.atlas)
-
-	return WriteProject(&project_to_create)
+    return WriteProject(&project_to_create)
 }
 
-// TODO: Should probably just unmarshal this?
 LoadProject :: proc(filename: string) -> (Project, ProjectError) {
-	new_project: Project
+    loaded_project: WriteableProject
+    new_project: Project
 
-	data, ok := os.read_entire_file(filename)
-	if !ok {
-		rl.TraceLog(.ERROR, "FILE: Failed to load %s", filename)
-		return new_project, .Invalid_File
-	}
-	defer delete(data)
+    if file_data, ok := os.read_entire_file(filename, context.temp_allocator); ok {
+        json.unmarshal(file_data, &loaded_project, allocator = context.temp_allocator)
 
-	json_data, error := json.parse(data)
-	if error != .None {
-		error_name := fmt.tprint(error)
-		rl.TraceLog(.ERROR, "FILE: Failed to parse json: %s", error_name)
+        new_project = ToReadable(loaded_project)
 
-		return new_project, .Invalid_Data
-	}
-	defer json.destroy_value(json_data)
+        for &atlas in new_project.atlas {
+            atlas.image = rl.GenImageColor(
+                i32(new_project.config.atlas_size),
+                i32(new_project.config.atlas_size),
+                rl.BLANK,
+            )
 
-	root := json_data.(json.Object)
-	new_project.version = int(root["version"].(json.Float))
-	new_project.name, _ = json.clone_string(root["name"].(json.String), context.allocator)
-	new_project.file, _ = strings.clone(filename)
+            GenerateAtlas(&atlas)
+        }
+    } else {
+        return new_project, .Invalid_Data
+    }
 
-	// TODO: Maybe change this... (It's a mess)
-	new_project.directory, _ = strings.clone_from_cstring(
-		rl.GetPrevDirectoryPath(strings.unsafe_string_to_cstring(filename)),
-	)
+    rl.SetWindowTitle(strings.unsafe_string_to_cstring(loaded_project.name))
 
-	config := root["config"].(json.Object)
-	new_project.config.assets_dir, _ = json.clone_string(config["assets_dir"].(json.String), context.allocator)
-	new_project.config.auto_center = config["auto_center"].(json.Boolean)
-	new_project.config.copy_files = config["copy_files"].(json.Boolean)
-	new_project.config.atlas_size = int(config["atlas_size"].(json.Float))
-
-	background_image := rl.GenImageChecked(
-		i32(new_project.config.atlas_size),
-		i32(new_project.config.atlas_size),
-		i32(new_project.config.atlas_size) / 32,
-		i32(new_project.config.atlas_size) / 32,
-		rl.LIGHTGRAY,
-		rl.GRAY,
-	)
-	defer rl.UnloadImage(background_image)
-
-	for name in root["atlas"].(json.Array) {
-		atlas: Atlas
-		atlas.name, _ = json.clone_string(name.(json.String), context.allocator)
-		atlas.image = rl.GenImageColor(
-			i32(new_project.config.atlas_size),
-			i32(new_project.config.atlas_size),
-			rl.BLANK,
-		)
-		atlas.texture = rl.LoadTextureFromImage(atlas.image)
-		append(&new_project.atlas, atlas)
-	}
-
-	new_project.background = rl.LoadTextureFromImage(background_image)
-
-	for element, index in root["sprites"].(json.Array) {
-		element := element.(json.Object)
-		element_source := element["source"].(json.Object)
-
-		sprite: Sprite
-		sprite.name, _ = json.clone_string(element["name"].(json.String), context.allocator)
-		sprite.file, _ = json.clone_string(element["file"].(json.String), context.allocator)
-		sprite.atlas_index = int(element["atlas_index"].(json.Float))
-
-		sprite.source = {
-			x      = f32(element_source["x"].(json.Float)),
-			y      = f32(element_source["y"].(json.Float)),
-			width  = f32(element_source["width"].(json.Float)),
-			height = f32(element_source["height"].(json.Float)),
-		}
-
-		if os.is_file(sprite.file) {
-			sprite.image = rl.LoadImage(strings.unsafe_string_to_cstring(sprite.file))
-		} else {
-			rl.TraceLog(.ERROR, "Failed to load file [%s] for sprite [%s, %d]", sprite.file, sprite.name, index)
-			sprite.image = rl.GenImageColor(i32(sprite.source.width), i32(sprite.source.height), rl.MAGENTA)
-		}
-
-		array := element["origin"].(json.Array)
-		sprite.origin = {f32(array[0].(json.Float)), f32(array[1].(json.Float))}
-
-		append(&new_project.sprites, sprite)
-	}
-
-	for _, index in new_project.atlas do GenerateAtlas(&new_project, index)
-
-	rl.SetWindowTitle(strings.unsafe_string_to_cstring(new_project.name))
-
-	return new_project, .None
+    return new_project, .None
 }
 
 UnloadProject :: proc(project: ^Project) {
-	util.DeleteStrings(project.name, project.file, project.directory, project.config.assets_dir)
+    util.DeleteStrings(project.name, project.file, project.directory, project.config.assets_dir)
 
-	for sprite, index in project.sprites {
-		rl.TraceLog(.DEBUG, "DELETE: Deleting sprite[%d] %s", index, sprite.name)
+    for atlas, atlas_index in project.atlas {
+        rl.TraceLog(.DEBUG, "DELETE: Deleting atlas[%d] %s", atlas_index, atlas.name)
+        rl.UnloadImage(atlas.image)
+        rl.UnloadTexture(atlas.texture)
 
-		util.DeleteStrings(sprite.name, sprite.file)
+        for sprite, sprite_index in atlas.sprites {
+            rl.TraceLog(.DEBUG, "DELETE: Deleting sprite[%d] %s", sprite_index, sprite.name)
+            util.DeleteStrings(sprite.name, sprite.file, sprite.atlas)
 
-		rl.UnloadImage(sprite.image)
-	}
-	delete(project.sprites)
+            rl.UnloadImage(sprite.image)
+        }
 
-	for atlas, index in project.atlas {
-		rl.TraceLog(.DEBUG, "DELETE: Deleting atlas[%d] %s", index, atlas.name)
-		rl.UnloadImage(atlas.image)
-		rl.UnloadTexture(atlas.texture)
+        delete(atlas.name)
+        delete(atlas.sprites)
+    }
 
-		delete(atlas.name)
-	}
+    delete(project.atlas)
 
-	delete(project.atlas)
-
-	rl.UnloadTexture(project.background)
+    rl.UnloadTexture(project.background)
 }
 
 WriteProject :: proc(project: ^Project) -> ProjectError {
-	if os.is_file(project.file) do os.rename(project.file, strings.concatenate({project.file, ".bkp"}, context.temp_allocator))
+    if os.is_file(project.file) do os.rename(project.file, strings.concatenate({project.file, ".bkp"}, context.temp_allocator))
 
-	project_to_write := WriteableProject {
-		version = project.version,
-		name = project.name,
-		config = {
-			assets_dir = project.config.assets_dir,
-			copy_files = project.config.copy_files,
-			auto_center = project.config.auto_center,
-			atlas_size = project.config.atlas_size,
-		},
-	}
+    project_to_write := ToWriteable(project^)
+    defer UnloadWriteable(&project_to_write)
 
-	for sprite in project.sprites {
-		sprite_to_write := WriteableSprite {
-			name = sprite.name,
-			file = sprite.file,
-			atlas_index = sprite.atlas_index,
-			source = sprite.source,
-			origin = sprite.origin,
-			animation = {frames = sprite.animation.frames, speed = sprite.animation.speed},
-		}
+    options: json.Marshal_Options = {
+        use_spaces = true,
+        pretty     = true,
+        spaces     = 4,
+    }
 
-		append(&project_to_write.sprites, sprite_to_write)
-	}
-	defer delete(project_to_write.sprites)
+    if project_data, error := json.marshal(project_to_write, options, context.temp_allocator); error == nil {
+        os.write_entire_file(project.file, project_data)
+    } else {
+        return .Failed_Serialisation
+    }
 
-	for atlas in project.atlas {
-		append(&project_to_write.atlas, atlas.name)
-	}
-	defer delete(project_to_write.atlas)
-
-	options: json.Marshal_Options = {
-		use_spaces = true,
-		pretty     = true,
-		spaces     = 4,
-	}
-
-	if project_data, error := json.marshal(project_to_write, options, context.temp_allocator); error == nil {
-		os.write_entire_file(project.file, project_data)
-	} else {
-		return .Failed_Serialisation
-	}
-
-	return .None
+    return .None
 }

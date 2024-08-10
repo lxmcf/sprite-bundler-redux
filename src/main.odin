@@ -8,7 +8,7 @@ import rl "vendor:raylib"
 
 import "bundler:core"
 import "bundler:screens"
-import "bundler:util"
+// import "bundler:util"
 
 FPS_MINIMUM :: 60
 WINDOW_WIDTH :: 1280
@@ -20,80 +20,75 @@ TEST_PROJECT :: "Hello World"
 debug_show_fps: bool
 
 DebugDrawFPS :: proc() {
-	DEBUG_FONT_SIZE :: 20
+    DEBUG_FONT_SIZE :: 20
 
-	if rl.IsKeyPressed(.GRAVE) do debug_show_fps = !debug_show_fps
+    if rl.IsKeyPressed(.GRAVE) do debug_show_fps = !debug_show_fps
 
-	if debug_show_fps {
-		current_fps := rl.TextFormat("%d FPS", rl.GetFPS())
-		text_width := rl.MeasureText(current_fps, DEBUG_FONT_SIZE)
-		text_colour := rl.GetFPS() < FPS_MINIMUM ? rl.ORANGE : rl.GREEN
+    if debug_show_fps {
+        current_fps := rl.TextFormat("%d FPS", rl.GetFPS())
+        text_width := rl.MeasureText(current_fps, DEBUG_FONT_SIZE)
+        text_colour := rl.GetFPS() < FPS_MINIMUM ? rl.ORANGE : rl.GREEN
 
-		rl.DrawRectangle(0, 0, text_width + 16, 32, rl.Fade(rl.BLACK, 0.5))
-		rl.DrawText(current_fps, 8, 8, DEBUG_FONT_SIZE, text_colour)
-	}
+        rl.DrawRectangle(0, 0, text_width + 16, 32, rl.Fade(rl.BLACK, 0.5))
+        rl.DrawText(current_fps, 8, 8, DEBUG_FONT_SIZE, text_colour)
+    }
+}
+
+UnloadTrackingAllocator :: proc(track: ^mem.Tracking_Allocator) {
+    if len(track.allocation_map) > 0 {
+        fmt.eprintfln("<------ %v leaked allocations ------>", len(track.allocation_map))
+        for _, entry in track.allocation_map do fmt.eprintfln("%v leaked %v bytes", entry.location, entry.size)
+    }
+
+    if len(track.bad_free_array) > 0 {
+        fmt.eprintfln("<------ %v bad frees          ------>", len(track.bad_free_array))
+        for entry in track.bad_free_array do fmt.eprintfln("%v bad free", entry.location)
+    }
+
+    mem.tracking_allocator_destroy(track)
 }
 
 main :: proc() {
-	track: mem.Tracking_Allocator
-	mem.tracking_allocator_init(&track, context.allocator)
-	context.allocator = mem.tracking_allocator(&track)
-	defer {
-		if len(track.allocation_map) > 0 {
-			fmt.eprintfln("<------ %v leaked allocations ------>", len(track.allocation_map))
+    track: mem.Tracking_Allocator
+    mem.tracking_allocator_init(&track, context.allocator)
+    context.allocator = mem.tracking_allocator(&track)
+    defer UnloadTrackingAllocator(&track)
 
-			for _, entry in track.allocation_map {
-				fmt.eprintfln("%v leaked %v bytes", entry.location, entry.size)
-			}
-		}
+    rl.InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
+    defer rl.CloseWindow()
 
-		if len(track.bad_free_array) > 0 {
-			fmt.eprintfln("<------ %v bad frees ------>", len(track.bad_free_array))
+    rl.SetWindowMinSize(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
+    rl.SetWindowState({.WINDOW_RESIZABLE})
+    rl.SetTraceLogLevel(.DEBUG)
 
-			for entry in track.bad_free_array {
-				fmt.eprintfln("%v bad free", entry.location)
-			}
-		}
+    // Set max framerate without vsync
+    max_fps := rl.GetMonitorRefreshRate(rl.GetCurrentMonitor())
+    rl.SetTargetFPS(max_fps <= 0 ? FPS_MINIMUM : max_fps)
 
-		mem.tracking_allocator_destroy(&track)
-	}
+    if !os.is_dir("projects") do os.make_directory("projects")
 
-	rl.InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
-	defer rl.CloseWindow()
+    _, file, _ := core.GetProjectFilenames(TEST_PROJECT, allocator = context.temp_allocator)
 
-	rl.SetWindowMinSize(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
-	rl.SetWindowState({.WINDOW_RESIZABLE})
-	rl.SetTraceLogLevel(.DEBUG)
+    core.CreateNewProject(TEST_PROJECT, 1024, false, false)
+    project, _ := core.LoadProject(file)
 
-	// Set max framerate without vsync
-	max_fps := rl.GetMonitorRefreshRate(rl.GetCurrentMonitor())
-	rl.SetTargetFPS(max_fps <= 0 ? FPS_MINIMUM : max_fps)
+    defer core.UnloadProject(&project)
 
-	if !os.is_dir("projects") do os.make_directory("projects")
+    screens.InitEditor(&project)
+    defer screens.UnloadEditor()
 
-	project_directory, project_file, project_assets := core.GetProjectFilenames(TEST_PROJECT)
-	defer util.DeleteStrings(project_directory, project_file, project_assets)
+    for !rl.WindowShouldClose() {
+        screens.UpdateEditor(&project)
 
-	core.CreateNewProject(TEST_PROJECT, 1024, false, false)
-	project, _ := core.LoadProject(project_file)
+        rl.BeginDrawing()
+        defer rl.EndDrawing()
 
-	defer core.UnloadProject(&project)
+        rl.ClearBackground(rl.DARKGRAY)
+        screens.DrawEditor(&project)
 
-	screens.InitEditor()
-	defer screens.UnloadEditor()
+        free_all(context.temp_allocator)
+        when ODIN_DEBUG do DebugDrawFPS()
+    }
 
-	for !rl.WindowShouldClose() {
-		screens.UpdateEditor(&project)
-
-		rl.BeginDrawing()
-		defer rl.EndDrawing()
-
-		rl.ClearBackground(rl.DARKGRAY)
-		screens.DrawEditor(&project)
-
-		free_all(context.temp_allocator)
-		when ODIN_DEBUG do DebugDrawFPS()
-	}
-
-	free_all(context.temp_allocator)
+    free_all(context.temp_allocator)
 }
