@@ -14,6 +14,9 @@ import "bundler:util"
 EditorState :: struct {
     camera:               rl.Camera2D,
     cursor:               rl.MouseCursor,
+
+    // Selected elements
+    current_atlas_index:  int,
     current_atlas:        ^core.Atlas, // NOTE: May not need a pointer here just yet
     selected_sprite:      ^core.Sprite,
 
@@ -100,8 +103,8 @@ UpdateCamera :: proc() {
 HandleEditorActions :: proc(project: ^core.Project) {
     if state.save_project do core.WriteProject(project)
     if state.export_project do core.ExportBundle(project^)
-    if state.create_new_atlas do core.CreateNewAtlas(project, "Blank Atlas", false)
-    if state.delete_current_atlas do rl.TraceLog(.ERROR, "NOT YET ADDED")
+    if state.create_new_atlas do core.CreateNewAtlas(project, "Blank Atlas")
+    if state.delete_current_atlas do core.DeleteAtlas(project, state.current_atlas_index)
 
     ResetEditorActions()
 }
@@ -132,7 +135,11 @@ HandleShortcuts :: proc(project: ^core.Project) {
         if rl.IsKeyPressed(.N) do state.create_new_atlas = true
         if rl.IsKeyPressed(.Y) do state.delete_current_atlas = true
 
-        // change_page := int(rl.IsKeyPressed(.RIGHT_BRACKET)) - int(rl.IsKeyPressed(.LEFT_BRACKET))
+        change_atlas := int(rl.IsKeyPressed(.RIGHT_BRACKET)) - int(rl.IsKeyPressed(.LEFT_BRACKET))
+        if change_atlas != 0 {
+            state.current_atlas_index = clamp(state.current_atlas_index + change_atlas, 0, len(project.atlas) - 1)
+            state.current_atlas = &project.atlas[state.current_atlas_index]
+        }
 
         when ODIN_DEBUG {
             // Import Image
@@ -348,21 +355,23 @@ DrawEditorGui :: proc(project: ^core.Project) {
     rl.GuiSetTooltip("Create New Atlas [CTRL + N]")
     if rl.GuiButton({anchor.x - 144, 4, 68, 24}, "#197# Create") do state.create_new_atlas = true
 
-    // current_atlas := i32(state.current_atlas)
-    // rl.GuiSetTooltip("Change Atlas [CTRL + ANGLE BRACKET]")
-    // rl.GuiSpinner(
-    // 	{anchor.x - 224, 4, 76, 24},
-    // 	"Current Atlas: ",
-    // 	&current_atlas,
-    // 	0,
-    // 	i32(len(project.atlas) - 1),
-    // 	false,
-    // )
+    current_atlas := i32(state.current_atlas_index)
+    rl.GuiSetTooltip("Change Atlas [CTRL + ANGLE BRACKET]")
+    rl.GuiSpinner(
+        {anchor.x - 224, 4, 76, 24},
+        "Current Atlas: ",
+        &current_atlas,
+        0,
+        i32(len(project.atlas) - 1),
+        false,
+    )
 
-    // if current_atlas != i32(state.current_atlas) {
-    // 	state.current_atlas = int(current_atlas)
-    // 	state.selected_sprite = nil
-    // }
+    if current_atlas != i32(state.current_atlas_index) {
+        state.current_atlas_index = int(current_atlas)
+
+        state.current_atlas = &project.atlas[state.current_atlas_index]
+        state.selected_sprite = nil
+    }
 
     rl.GuiDisableTooltip()
 

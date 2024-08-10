@@ -140,7 +140,11 @@ CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center:
         },
     }
 
-    CreateNewAtlas(&project_to_create, DEFAULT_ATLAS_NAME, false)
+    atlas_to_create: Atlas = {
+        name = DEFAULT_ATLAS_NAME,
+    }
+
+    append(&project_to_create.atlas, atlas_to_create)
     defer delete(project_to_create.atlas)
 
     return WriteProject(&project_to_create)

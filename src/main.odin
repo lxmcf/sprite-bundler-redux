@@ -8,7 +8,6 @@ import rl "vendor:raylib"
 
 import "bundler:core"
 import "bundler:screens"
-// import "bundler:util"
 
 FPS_MINIMUM :: 60
 WINDOW_WIDTH :: 1280

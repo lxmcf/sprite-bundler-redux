@@ -2,6 +2,7 @@ package core
 
 import "core:strings"
 
+import "bundler:util"
 import rl "vendor:raylib"
 
 Atlas :: struct {
@@ -66,18 +67,34 @@ GenerateAtlas :: proc(atlas: ^Atlas) {
     atlas.texture = rl.LoadTextureFromImage(atlas.image)
 }
 
-CreateNewAtlas :: proc(project: ^Project, name: string, generate: bool = true) {
+CreateNewAtlas :: proc(project: ^Project, name: string) {
     new_atlas: Atlas = {
-        name = strings.clone(name, context.temp_allocator),
+        name = strings.clone(name),
     }
 
-    if generate {
-        new_atlas.image = rl.GenImageColor(i32(project.config.atlas_size), i32(project.config.atlas_size), rl.BLANK)
-        new_atlas.texture = rl.LoadTextureFromImage(new_atlas.image)
-    }
+    new_atlas.image = rl.GenImageColor(i32(project.config.atlas_size), i32(project.config.atlas_size), rl.BLANK)
+    new_atlas.texture = rl.LoadTextureFromImage(new_atlas.image)
 
     append(&project.atlas, new_atlas)
 }
 
 // TODO: Store sprites in atlas rather than 1 list to make it easier to delete an atlas
-DeleteAtlas :: proc() {}
+DeleteAtlas :: proc(project: ^Project, index: int) {
+    atlas := project.atlas[index]
+
+    for sprite in atlas.sprites {
+        util.DeleteStrings(sprite.name, sprite.file, sprite.atlas)
+
+        rl.UnloadImage(sprite.image)
+
+        delete(sprite.animation.frames)
+    }
+
+    rl.UnloadImage(atlas.image)
+    rl.UnloadTexture(atlas.texture)
+
+    delete(atlas.name)
+    delete(atlas.sprites)
+
+    unordered_remove(&project.atlas, index)
+}
