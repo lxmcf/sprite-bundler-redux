@@ -5,17 +5,17 @@ import "core:slice"
 import "core:strconv"
 import "core:strings"
 
-import ui "vendor:microui"
+import mu "vendor:microui"
 import rl "vendor:raylib"
 
 import "bundler:core"
+import "bundler:myui"
 import "bundler:util"
 
 @(private = "file")
 EditorState :: struct {
     camera:               rl.Camera2D,
     cursor:               rl.MouseCursor,
-    ui_context:           ui.Context,
 
     // Selected elements
     current_atlas_index:  int,
@@ -38,12 +38,12 @@ InitEditor :: proc(project: ^core.Project) {
 
     state.current_atlas = &project.atlas[0]
 
-    ui.init(&state.ui_context)
-    state.ui_context.text_width = ui.default_atlas_text_width
-    state.ui_context.text_height = ui.default_atlas_text_height
+    myui.Init()
 }
 
-UnloadEditor :: proc() {}
+UnloadEditor :: proc() {
+    myui.Unload()
+}
 
 UpdateEditor :: proc(project: ^core.Project) {
     HandleEditorActions(project)
@@ -388,45 +388,20 @@ DrawEditorGui :: proc(project: ^core.Project) {
 
 @(private = "file")
 DrawEditorGuiTest :: proc() {
-    @(static)
-    opts: ui.Options
-    ui.begin(&state.ui_context)
+    ctx := myui.Begin()
 
-    if ui.begin_window(&state.ui_context, "Hello World", {40, 40, 300, 450}, opts) {
-        ui.layout_row(&state.ui_context, {60, -1}, 0)
-        // ui.label(&state.ui_context, "hello World")
+    if mu.window(ctx, "editor_toolbar", {0, 0, rl.GetScreenWidth(), 32}, {.NO_RESIZE, .NO_TITLE}) {
+        mu.layout_width(ctx, rl.GetScreenWidth())
+        mu.layout_row(ctx, {72, 72})
 
-        ui.end_window(&state.ui_context)
-    }
+        if .SUBMIT in mu.button(ctx, "Save") {
+            state.save_project = true
+        }
 
-    ui.end(&state.ui_context)
-
-    RenderUI(&state.ui_context)
-}
-
-@(private = "file")
-RenderUI :: proc(ui_context: ^ui.Context) {
-    rl.BeginScissorMode(0, 0, rl.GetScreenWidth(), rl.GetScreenHeight())
-
-    command: ^ui.Command
-    for variant in ui.next_command_iterator(ui_context, &command) {
-        #partial switch cmd in variant {
-        case ^ui.Command_Rect:
-            rl.DrawRectangleRec(
-                {f32(cmd.rect.x), f32(cmd.rect.y), f32(cmd.rect.w), f32(cmd.rect.h)},
-                {cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a},
-            )
-
-        case ^ui.Command_Text:
-            rl.DrawText(
-                strings.clone_to_cstring(cmd.str, context.temp_allocator),
-                cmd.pos.x,
-                cmd.pos.y,
-                cmd.size / 4,
-                {cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a},
-            )
+        if .SUBMIT in mu.button(ctx, "Export") {
+            state.export_project = true
         }
     }
 
-    rl.EndScissorMode()
+    myui.End()
 }
