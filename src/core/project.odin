@@ -172,7 +172,7 @@ LoadProject :: proc(filename: string) -> (Project, ProjectError) {
         return new_project, .Invalid_Data
     }
 
-    rl.SetWindowTitle(strings.unsafe_string_to_cstring(loaded_project.name))
+    rl.SetWindowTitle(strings.clone_to_cstring(loaded_project.name, context.temp_allocator))
 
     return new_project, .None
 }

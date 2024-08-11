@@ -61,7 +61,7 @@ SpriteToReadable :: proc(sprite: WriteableSprite) -> Sprite {
     }
 
     if os.is_file(sprite.file) {
-        readable.image = rl.LoadImage(strings.unsafe_string_to_cstring(sprite.file))
+        readable.image = rl.LoadImage(strings.clone_to_cstring(sprite.file, context.temp_allocator))
     } else {
         rl.TraceLog(.ERROR, "Failed to load file [%s]", sprite.file)
 

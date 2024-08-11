@@ -5,6 +5,7 @@ import "core:slice"
 import "core:strconv"
 import "core:strings"
 
+import ui "vendor:microui"
 import rl "vendor:raylib"
 
 import "bundler:core"
@@ -14,6 +15,7 @@ import "bundler:util"
 EditorState :: struct {
     camera:               rl.Camera2D,
     cursor:               rl.MouseCursor,
+    ui_context:           ui.Context,
 
     // Selected elements
     current_atlas_index:  int,
@@ -35,6 +37,10 @@ InitEditor :: proc(project: ^core.Project) {
     state.camera.zoom = 0.5
 
     state.current_atlas = &project.atlas[0]
+
+    ui.init(&state.ui_context)
+    state.ui_context.text_width = ui.default_atlas_text_width
+    state.ui_context.text_height = ui.default_atlas_text_height
 }
 
 UnloadEditor :: proc() {}
@@ -72,7 +78,8 @@ UpdateEditor :: proc(project: ^core.Project) {
 
 DrawEditor :: proc(project: ^core.Project) {
     DrawMainEditor(project)
-    DrawEditorGui(project)
+    // DrawEditorGui(project)
+    DrawEditorGuiTest()
 }
 
 // ====== PRIVATE ====== \\
@@ -179,7 +186,7 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
                     )
 
                     new_path := util.CreatePath({project.config.assets_dir, string(new_filename)})
-                    path = strings.unsafe_string_to_cstring(new_path)
+                    path = strings.clone_to_cstring(new_path, context.temp_allocator)
 
                     rl.ExportImage(texture, path)
                 }
@@ -297,7 +304,7 @@ DrawMainEditor :: proc(project: ^core.Project) {
         }
     }
 
-    rl.DrawText(strings.unsafe_string_to_cstring(state.current_atlas.name), 0, -80, 80, rl.WHITE)
+    rl.DrawText(strings.clone_to_cstring(state.current_atlas.name, context.temp_allocator), 0, -80, 80, rl.WHITE)
 }
 
 // TEMP: May rewrite some of the needed raygui components to avoid so much casting
@@ -377,4 +384,49 @@ DrawEditorGui :: proc(project: ^core.Project) {
 
     HandleEditorActions(project)
     ResetEditorActions()
+}
+
+@(private = "file")
+DrawEditorGuiTest :: proc() {
+    @(static)
+    opts: ui.Options
+    ui.begin(&state.ui_context)
+
+    if ui.begin_window(&state.ui_context, "Hello World", {40, 40, 300, 450}, opts) {
+        ui.layout_row(&state.ui_context, {60, -1}, 0)
+        // ui.label(&state.ui_context, "hello World")
+
+        ui.end_window(&state.ui_context)
+    }
+
+    ui.end(&state.ui_context)
+
+    RenderUI(&state.ui_context)
+}
+
+@(private = "file")
+RenderUI :: proc(ui_context: ^ui.Context) {
+    rl.BeginScissorMode(0, 0, rl.GetScreenWidth(), rl.GetScreenHeight())
+
+    command: ^ui.Command
+    for variant in ui.next_command_iterator(ui_context, &command) {
+        #partial switch cmd in variant {
+        case ^ui.Command_Rect:
+            rl.DrawRectangleRec(
+                {f32(cmd.rect.x), f32(cmd.rect.y), f32(cmd.rect.w), f32(cmd.rect.h)},
+                {cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a},
+            )
+
+        case ^ui.Command_Text:
+            rl.DrawText(
+                strings.clone_to_cstring(cmd.str, context.temp_allocator),
+                cmd.pos.x,
+                cmd.pos.y,
+                cmd.size / 4,
+                {cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a},
+            )
+        }
+    }
+
+    rl.EndScissorMode()
 }

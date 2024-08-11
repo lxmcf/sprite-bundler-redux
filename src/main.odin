@@ -56,7 +56,7 @@ main :: proc() {
     rl.InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
     defer rl.CloseWindow()
 
-    rl.SetWindowMinSize(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
+    rl.SetWindowMinSize(640, 360)
     rl.SetWindowState({.WINDOW_RESIZABLE})
     rl.SetTraceLogLevel(.DEBUG)
 
@@ -70,20 +70,24 @@ main :: proc() {
 
     core.CreateNewProject(TEST_PROJECT, 1024, false, false)
     project, _ := core.LoadProject(file)
-
     defer core.UnloadProject(&project)
 
     screens.InitEditor(&project)
     defer screens.UnloadEditor()
 
+    // screens.InitProjectPicker()
+    // defer screens.UnloadProjectPicker()
+
     for !rl.WindowShouldClose() {
         screens.UpdateEditor(&project)
+        // screens.UpdateProjectPicker()
 
         rl.BeginDrawing()
         defer rl.EndDrawing()
 
         rl.ClearBackground(rl.DARKGRAY)
         screens.DrawEditor(&project)
+        // screens.DrawProjectPicker()
 
         free_all(context.temp_allocator)
         when ODIN_DEBUG do DebugDrawFPS()
