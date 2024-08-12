@@ -6,7 +6,8 @@ import "core:os"
 
 import rl "vendor:raylib"
 
-import "bundler:core"
+// import "bundler:core"
+import "bundler:myui"
 import "bundler:screens"
 
 FPS_MINIMUM :: 60
@@ -16,7 +17,13 @@ WINDOW_TITLE :: "Sprite Bundler"
 
 TEST_PROJECT :: "Hello World"
 
+ApplicationScreen :: enum {
+    PROJECT_PICKER,
+    EDITOR,
+}
+
 debug_show_fps: bool
+current_screen: ApplicationScreen
 
 DebugDrawFPS :: proc() {
     DEBUG_FONT_SIZE :: 20
@@ -66,28 +73,31 @@ main :: proc() {
 
     if !os.is_dir("projects") do os.make_directory("projects")
 
-    _, file, _ := core.GetProjectFilenames(TEST_PROJECT, allocator = context.temp_allocator)
+    // _, file, _ := core.GetProjectFilenames(TEST_PROJECT, allocator = context.temp_allocator)
 
-    core.CreateNewProject(TEST_PROJECT, 1024, false, false)
-    project, _ := core.LoadProject(file)
-    defer core.UnloadProject(&project)
+    // core.CreateNewProject(TEST_PROJECT, 1024, false, false)
+    // project, _ := core.LoadProject(file)
+    // defer core.UnloadProject(&project)
 
-    screens.InitEditor(&project)
-    defer screens.UnloadEditor()
+    // screens.InitEditor(&project)
+    // defer screens.UnloadEditor()
 
-    // screens.InitProjectPicker()
-    // defer screens.UnloadProjectPicker()
+    screens.InitProjectPicker()
+    defer screens.UnloadProjectPicker()
+
+    myui.Init()
+    defer myui.Unload()
 
     for !rl.WindowShouldClose() {
-        screens.UpdateEditor(&project)
-        // screens.UpdateProjectPicker()
+        // screens.UpdateEditor(&project)
+        screens.UpdateProjectPicker()
 
         rl.BeginDrawing()
         defer rl.EndDrawing()
 
         rl.ClearBackground(rl.DARKGRAY)
-        screens.DrawEditor(&project)
-        // screens.DrawProjectPicker()
+        // screens.DrawEditor(&project)
+        screens.DrawProjectPicker()
 
         free_all(context.temp_allocator)
         when ODIN_DEBUG do DebugDrawFPS()

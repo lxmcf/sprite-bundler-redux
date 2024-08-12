@@ -1,28 +1,20 @@
 package screens
 
+import "core:path/filepath"
+import "core:strings"
+
+import "bundler:myui"
+import "bundler:util"
+
+import mu "vendor:microui"
 import rl "vendor:raylib"
 
-WINDOW_SIZE :: rl.Vector2{640, 360}
+WINDOW_WIDTH :: 640
+WINDOW_HEIGHT :: 360
 
 @(private = "file")
 ProjectPickerState :: struct {
-    files:           rl.FilePathList,
-
-    // File List
-    scroll_index:    i32,
-    active_index:    i32,
-
-    // Dropdowns
-    dropdown_active: bool,
-    dropdown_index:  i32,
-
-    // Textbox
-    name_text:       cstring,
-    name_edit:       bool,
-
-    // Toggles
-    copy_files:      bool,
-    auto_center:     bool,
+    projects: [dynamic]ProjectListItem,
 }
 
 @(private = "file")
@@ -33,61 +25,73 @@ ProjectListItem :: struct {
     file: string,
 }
 
-// TODO: Make something nicer, ported over from original
-
 InitProjectPicker :: proc() {
-    rl.SetWindowTitle("Projects")
+    matches, err := filepath.glob("projects/*", context.temp_allocator)
+    if err == .Syntax_Error {
+        rl.TraceLog(.ERROR, "INVALID SYNTAX")
+        return
+    }
 
-    state.files = rl.LoadDirectoryFilesEx("projects", ".lspp", true)
-    // state.name_text = strings.clone_to_cstring("Hello World")
+    for match in matches {
+        index := strings.last_index_any(match, filepath.SEPARATOR_STRING)
+
+        item: ProjectListItem = {
+            file = strings.clone(match),
+            name = strings.clone(filepath.stem(match[index + 1:])),
+        }
+
+        append(&state.projects, item)
+    }
 }
 
 UnloadProjectPicker :: proc() {
-    rl.UnloadDirectoryFiles(state.files)
+    for project in state.projects {
+        util.DeleteStrings(project.name, project.file)
+    }
+
+    delete(state.projects)
 }
 
 UpdateProjectPicker :: proc() {}
 
 DrawProjectPicker :: proc() {
-    rl.GuiSetStyle(.LISTVIEW, .TEXT_ALIGNMENT, i32(rl.GuiTextAlignment.TEXT_ALIGN_LEFT))
+    ctx := myui.Begin()
+    defer myui.End()
 
-    anchor: rl.Vector2 = ({f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight())} / 2) - (WINDOW_SIZE / 2)
-    rl.GuiWindowBox({anchor.x, anchor.y, WINDOW_SIZE.x, WINDOW_SIZE.y}, "#207#LSPP Projects")
-
-    anchor += {8, 32}
-    rl.GuiListViewEx(
-        {anchor.x, anchor.y, 624, 128},
-        state.files.paths,
-        i32(state.files.count),
-        &state.scroll_index,
-        &state.active_index,
-        nil,
-    )
-
-    rl.GuiButton({anchor.x, anchor.y + 134, 308, 24}, "#005#Load Selected Project")
-    rl.GuiButton({anchor.x + 316, anchor.y + 134, 308, 24}, "#143#Delete Selected Project")
-
-    rl.GuiGroupBox({anchor.x, anchor.y + 176, 624, 144}, "#185#New Project")
-
-    anchor += {8, 184}
-
-    if rl.GuiTextBox({anchor.x, anchor.y, 128, 24}, state.name_text, 128, state.name_edit) {
-        state.name_edit = !state.name_edit
+    rect: mu.Rect = {
+        (rl.GetScreenWidth() / 2) - (WINDOW_WIDTH / 2),
+        (rl.GetScreenHeight() / 2) - (WINDOW_HEIGHT / 2),
+        WINDOW_WIDTH,
+        WINDOW_HEIGHT,
     }
 
-    if rl.IsKeyPressed(.BACKSPACE) {
-        rl.TraceLog(.INFO, "You entered: %s", state.name_text)
+    if mu.window(ctx, "Projects", rect, {.NO_RESIZE, .NO_CLOSE}) {
+        mu.layout_row(ctx, {-1}, 192)
+        mu.begin_panel(ctx, "Project Panel", {.NO_SCROLL})
+
+        container := mu.get_current_container(ctx)
+        label_width := container.rect.w - (mu.default_style.padding * 4) - 144
+
+        for project, index in state.projects {
+            mu.layout_row(ctx, {label_width, 72, 72})
+            mu.label(ctx, project.name)
+
+            mu.push_id(ctx, uintptr(index))
+            if .SUBMIT in mu.button(ctx, "Load") {
+                rl.TraceLog(.INFO, "You loaded on %s", project.name)
+            }
+            if .SUBMIT in mu.button(ctx, "Delete") {
+                rl.TraceLog(.INFO, "You deleted on %s", project.name)
+            }
+            mu.pop_id(ctx)
+
+        }
+
+        mu.end_panel(ctx)
+
+        mu.layout_row(ctx, {-1}, -1)
+        mu.begin_panel(ctx, "New Project")
+
+        mu.end_panel(ctx)
     }
-
-    // if rl.GuiDropdownBox(
-    //     {anchor.x, anchor.y, 128, 24},
-    //     "512;1024;2048;4096;8192",
-    //     &state.dropdown_index,
-    //     state.dropdown_active,
-    // ) {
-    //     state.dropdown_active = !state.dropdown_active
-    // }
-
-    active: bool
-    rl.GuiToggle({anchor.x, anchor.y + 32, 24, 24}, nil, &active)
 }

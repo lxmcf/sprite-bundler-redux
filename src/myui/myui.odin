@@ -129,10 +129,10 @@ HandleTextInput :: proc() {
 @(private)
 HandleMouseInput :: proc() {
     mouse_position: Vector2i = {rl.GetMouseX(), rl.GetMouseY()}
-    mouse_scroll := rl.GetMouseWheelMoveV() * -30
+    mouse_scroll := rl.GetMouseWheelMoveV() * 5
 
     mu.input_mouse_move(&global_context, mouse_position.x, mouse_position.y)
-    mu.input_scroll(&global_context, i32(mouse_scroll.x) * -30, i32(mouse_scroll.y) * -30)
+    mu.input_scroll(&global_context, i32(mouse_scroll.x) * 5, i32(mouse_scroll.y) * -30)
 
     ButtonMap :: struct {
         rl: rl.MouseButton,

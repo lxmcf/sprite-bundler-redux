@@ -37,13 +37,9 @@ InitEditor :: proc(project: ^core.Project) {
     state.camera.zoom = 0.5
 
     state.current_atlas = &project.atlas[0]
-
-    myui.Init()
 }
 
-UnloadEditor :: proc() {
-    myui.Unload()
-}
+UnloadEditor :: proc() {}
 
 UpdateEditor :: proc(project: ^core.Project) {
     HandleEditorActions(project)
