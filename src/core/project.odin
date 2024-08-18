@@ -32,6 +32,9 @@ Project :: struct {
         auto_center: bool,
         atlas_size:  int,
     },
+
+    // INTERNAL
+    is_loaded:  bool,
 }
 
 @(private)
@@ -80,7 +83,6 @@ ProjectToWriteable :: proc(project: Project) -> WriteableProject {
 @(private)
 ProjectToReadable :: proc(project: WriteableProject) -> Project {
     dir, file, _ := GetProjectFilenames(project.name, allocator = context.temp_allocator)
-
 
     readable: Project = {
         version = project.version,
@@ -174,6 +176,8 @@ LoadProject :: proc(filename: string) -> (Project, ProjectError) {
 
     rl.SetWindowTitle(strings.clone_to_cstring(loaded_project.name, context.temp_allocator))
 
+    new_project.is_loaded = true
+
     return new_project, .None
 }
 
@@ -199,6 +203,8 @@ UnloadProject :: proc(project: ^Project) {
     delete(project.atlas)
 
     rl.UnloadTexture(project.background)
+
+    project.is_loaded = false
 }
 
 WriteProject :: proc(project: ^Project) -> ProjectError {

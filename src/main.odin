@@ -6,8 +6,7 @@ import "core:os"
 
 import rl "vendor:raylib"
 
-// import "bundler:core"
-import "bundler:myui"
+import "bundler:core"
 import "bundler:screens"
 
 FPS_MINIMUM :: 60
@@ -22,11 +21,11 @@ ApplicationScreen :: enum {
     EDITOR,
 }
 
-debug_show_fps: bool
-current_screen: ApplicationScreen
-
 DebugDrawFPS :: proc() {
     DEBUG_FONT_SIZE :: 20
+
+    @(static)
+    debug_show_fps: bool
 
     if rl.IsKeyPressed(.GRAVE) do debug_show_fps = !debug_show_fps
 
@@ -73,35 +72,77 @@ main :: proc() {
 
     if !os.is_dir("projects") do os.make_directory("projects")
 
-    // _, file, _ := core.GetProjectFilenames(TEST_PROJECT, allocator = context.temp_allocator)
+    core.CreateNewProject(TEST_PROJECT, 1024, false, false)
 
-    // core.CreateNewProject(TEST_PROJECT, 1024, false, false)
-    // project, _ := core.LoadProject(file)
-    // defer core.UnloadProject(&project)
-
-    // screens.InitEditor(&project)
-    // defer screens.UnloadEditor()
+    current_screen := ApplicationScreen.PROJECT_PICKER
+    current_project: core.Project
+    defer core.UnloadProject(&current_project)
 
     screens.InitProjectPicker()
-    defer screens.UnloadProjectPicker()
+    defer UnloadCurrentScreen(current_screen)
 
-    myui.Init()
-    defer myui.Unload()
+    core.Init()
+    defer core.Unload()
 
     for !rl.WindowShouldClose() {
-        // screens.UpdateEditor(&project)
-        screens.UpdateProjectPicker()
+        UpdateCurrentScreen(current_screen, &current_project)
 
         rl.BeginDrawing()
         defer rl.EndDrawing()
 
         rl.ClearBackground(rl.DARKGRAY)
-        // screens.DrawEditor(&project)
-        screens.DrawProjectPicker()
+        DrawCurrentScreen(current_screen, &current_project)
+
+        when ODIN_DEBUG {
+            DebugDrawFPS()
+        }
 
         free_all(context.temp_allocator)
-        when ODIN_DEBUG do DebugDrawFPS()
-    }
 
-    free_all(context.temp_allocator)
+        if current_project.is_loaded && current_screen != .EDITOR {
+            UnloadCurrentScreen(current_screen)
+            current_screen = .EDITOR
+
+            screens.InitEditor(&current_project)
+        }
+
+        if !current_project.is_loaded && current_screen != .PROJECT_PICKER {
+            UnloadCurrentScreen(current_screen)
+            current_screen = .PROJECT_PICKER
+
+            screens.InitProjectPicker()
+        }
+
+        free_all(context.temp_allocator)
+    }
+}
+
+UpdateCurrentScreen :: proc(screen: ApplicationScreen, project: ^core.Project) {
+    switch screen {
+    case .EDITOR:
+        screens.UpdateEditor(project)
+
+    case .PROJECT_PICKER:
+        screens.UpdateProjectPicker(project)
+    }
+}
+
+DrawCurrentScreen :: proc(screen: ApplicationScreen, project: ^core.Project) {
+    switch screen {
+    case .EDITOR:
+        screens.DrawEditor(project)
+
+    case .PROJECT_PICKER:
+        screens.DrawProjectPicker()
+    }
+}
+
+UnloadCurrentScreen :: proc(screen: ApplicationScreen) {
+    switch screen {
+    case .EDITOR:
+        screens.UnloadEditor()
+
+    case .PROJECT_PICKER:
+        screens.UnloadProjectPicker()
+    }
 }

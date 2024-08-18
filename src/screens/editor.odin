@@ -9,7 +9,6 @@ import mu "vendor:microui"
 import rl "vendor:raylib"
 
 import "bundler:core"
-import "bundler:myui"
 import "bundler:util"
 
 @(private = "file")
@@ -164,7 +163,6 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
         if files.count > 0 {
             for i in 0 ..< files.count {
                 path := files.paths[i]
-                defer if project.config.copy_files do delete(path)
 
                 if !rl.IsFileExtension(path, ".png") do continue
 
@@ -181,7 +179,10 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
                         context.temp_allocator,
                     )
 
-                    new_path := util.CreatePath({project.config.assets_dir, string(new_filename)})
+                    new_path := util.CreatePath(
+                        {project.config.assets_dir, string(new_filename)},
+                        context.temp_allocator,
+                    )
                     path = strings.clone_to_cstring(new_path, context.temp_allocator)
 
                     rl.ExportImage(texture, path)
@@ -384,7 +385,7 @@ DrawEditorGui :: proc(project: ^core.Project) {
 
 @(private = "file")
 DrawEditorGuiTest :: proc() {
-    ctx := myui.Begin()
+    ctx := core.Begin()
 
     if mu.window(ctx, "editor_toolbar", {0, 0, rl.GetScreenWidth(), 32}, {.NO_RESIZE, .NO_TITLE}) {
         mu.layout_width(ctx, rl.GetScreenWidth())
@@ -399,5 +400,5 @@ DrawEditorGuiTest :: proc() {
         }
     }
 
-    myui.End()
+    core.End()
 }

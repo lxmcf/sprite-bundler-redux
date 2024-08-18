@@ -1,6 +1,6 @@
 // CREDIT: https://gist.github.com/keenanwoodall/b6f7ecf6346ba3be4842c7d9fd1f372d
 
-package myui
+package core
 
 import "core:unicode/utf8"
 
