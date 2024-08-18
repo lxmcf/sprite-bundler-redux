@@ -22,6 +22,12 @@ EditorState :: struct {
     current_atlas:        ^core.Atlas, // NOTE: May not need a pointer here just yet
     selected_sprite:      ^core.Sprite,
 
+    // Buffers
+    atlas_rename_buffer:  [64]byte,
+    sprite_rename_buffer: [64]byte,
+    is_atlas_rename:      bool,
+    is_sprite_rename:     bool,
+
     // UI controls
     save_project:         bool,
     export_project:       bool,
@@ -31,6 +37,8 @@ EditorState :: struct {
 
 @(private = "file")
 state: EditorState
+
+TOOLBAR_HEIGHT :: 32
 
 // ====== PUBLIC ====== \\
 InitEditor :: proc(project: ^core.Project) {
@@ -50,6 +58,8 @@ UpdateEditor :: proc(project: ^core.Project) {
 
     HandleShortcuts(project)
     HandleDroppedFiles(project)
+
+    if rl.GetMouseY() < i32(TOOLBAR_HEIGHT) do return
 
     mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
     for &sprite in state.current_atlas.sprites {
@@ -74,8 +84,7 @@ UpdateEditor :: proc(project: ^core.Project) {
 
 DrawEditor :: proc(project: ^core.Project) {
     DrawMainEditor(project)
-    // DrawEditorGui(project)
-    DrawEditorGuiTest()
+    DrawEditorGui(project)
 }
 
 // ====== PRIVATE ====== \\
@@ -107,13 +116,15 @@ HandleEditorActions :: proc(project: ^core.Project) {
     if state.save_project do core.WriteProject(project)
     if state.export_project do core.ExportBundle(project^)
     if state.create_new_atlas do core.CreateNewAtlas(project, "Blank Atlas")
-    if state.delete_current_atlas do core.DeleteAtlas(project, state.current_atlas_index)
 
-    ResetEditorActions()
-}
+    if state.delete_current_atlas {
+        core.DeleteAtlas(project, state.current_atlas_index)
 
-@(private = "file")
-ResetEditorActions :: proc() {
+        if len(project.atlas) == 0 {
+            core.CreateNewAtlas(project, "Blank Atlas")
+        }
+    }
+
     state.export_project = false
     state.save_project = false
     state.create_new_atlas = false
@@ -138,19 +149,14 @@ HandleShortcuts :: proc(project: ^core.Project) {
         if rl.IsKeyPressed(.N) do state.create_new_atlas = true
         if rl.IsKeyPressed(.Y) do state.delete_current_atlas = true
 
+        if rl.IsKeyPressed(.R) {
+            state.is_atlas_rename = true
+        }
+
         change_atlas := int(rl.IsKeyPressed(.RIGHT_BRACKET)) - int(rl.IsKeyPressed(.LEFT_BRACKET))
         if change_atlas != 0 {
             state.current_atlas_index = clamp(state.current_atlas_index + change_atlas, 0, len(project.atlas) - 1)
             state.current_atlas = &project.atlas[state.current_atlas_index]
-        }
-
-        when ODIN_DEBUG {
-            // Import Image
-            if rl.IsKeyPressed(.R) {
-                core.ImportBundle(
-                    util.CreatePath({project.directory, "export", "bundle.lspx"}, context.temp_allocator),
-                )
-            }
         }
     }
 }
@@ -245,8 +251,6 @@ PackSprites :: proc(project: ^core.Project) {
 
     // NOTE: I have no idea why I need a pointer... From a pointer... It doesn't sort correctly otherwise
     for &sprite, index in state.current_atlas.sprites {
-        times_looped := 0
-
         current_rectangle := &sprite.source
 
         for j := 0; j < texture_placed; j += 1 {
@@ -263,7 +267,6 @@ PackSprites :: proc(project: ^core.Project) {
                 }
             }
         }
-        rl.TraceLog(.DEBUG, "Sprite [%s] looped %d times", sprite.name, times_looped)
 
         within_y := int(current_rectangle.y + current_rectangle.height) <= project.config.atlas_size
         if !within_y {
@@ -283,8 +286,6 @@ PackSprites :: proc(project: ^core.Project) {
             texture_placed += 1
         }
     }
-
-    rl.TraceLog(.DEBUG, "Sorted %d textures!", texture_placed)
 }
 
 @(private = "file")
@@ -306,7 +307,6 @@ DrawMainEditor :: proc(project: ^core.Project) {
     rl.DrawText(strings.clone_to_cstring(state.current_atlas.name, context.temp_allocator), 0, -80, 80, rl.WHITE)
 }
 
-// TEMP: May rewrite some of the needed raygui components to avoid so much casting
 @(private = "file")
 DrawEditorGui :: proc(project: ^core.Project) {
     if state.selected_sprite != nil {
@@ -341,57 +341,14 @@ DrawEditorGui :: proc(project: ^core.Project) {
         }
     }
 
-    // Set Style
-    rl.GuiSetStyle(.BUTTON, .TEXT_ALIGNMENT, i32(rl.GuiTextAlignment.TEXT_ALIGN_LEFT))
-
-    rl.GuiEnableTooltip()
-    rl.GuiPanel({0, 0, f32(rl.GetScreenWidth()), 32}, nil)
-
-    rl.GuiSetTooltip("Save Project [CTRL + S]")
-    if rl.GuiButton({4, 4, 68, 24}, "#2# Save") do state.save_project = true
-
-    rl.GuiSetTooltip("Export Project [CTRL + E]")
-    if rl.GuiButton({76, 4, 68, 24}, "#200# Export") do state.export_project = true
-
-    anchor: rl.Vector2 = {f32(rl.GetScreenWidth()), 0}
-
-    rl.GuiSetTooltip("Delete Current Atlas [CTRL + Y]")
-    if rl.GuiButton({anchor.x - 72, 4, 68, 24}, "#143# Delete") do state.delete_current_atlas = true
-
-    rl.GuiSetTooltip("Create New Atlas [CTRL + N]")
-    if rl.GuiButton({anchor.x - 144, 4, 68, 24}, "#197# Create") do state.create_new_atlas = true
-
-    current_atlas := i32(state.current_atlas_index)
-    rl.GuiSetTooltip("Change Atlas [CTRL + ANGLE BRACKET]")
-    rl.GuiSpinner(
-        {anchor.x - 224, 4, 76, 24},
-        "Current Atlas: ",
-        &current_atlas,
-        0,
-        i32(len(project.atlas) - 1),
-        false,
-    )
-
-    if current_atlas != i32(state.current_atlas_index) {
-        state.current_atlas_index = int(current_atlas)
-
-        state.current_atlas = &project.atlas[state.current_atlas_index]
-        state.selected_sprite = nil
-    }
-
-    rl.GuiDisableTooltip()
-
-    HandleEditorActions(project)
-    ResetEditorActions()
-}
-
-@(private = "file")
-DrawEditorGuiTest :: proc() {
     ctx := core.Begin()
+    defer core.End()
 
-    if mu.window(ctx, "editor_toolbar", {0, 0, rl.GetScreenWidth(), 32}, {.NO_RESIZE, .NO_TITLE}) {
-        mu.layout_width(ctx, rl.GetScreenWidth())
-        mu.layout_row(ctx, {72, 72})
+    if mu.window(ctx, "editor_toolbar", {0, 0, rl.GetScreenWidth(), TOOLBAR_HEIGHT}, {.NO_RESIZE, .NO_TITLE}) {
+        container := mu.get_current_container(ctx)
+        container.rect.w = rl.GetScreenWidth()
+
+        mu.layout_row(ctx, {64, 64, 96})
 
         if .SUBMIT in mu.button(ctx, "Save") {
             state.save_project = true
@@ -400,7 +357,39 @@ DrawEditorGuiTest :: proc() {
         if .SUBMIT in mu.button(ctx, "Export") {
             state.export_project = true
         }
+
+        if .SUBMIT in mu.button(ctx, "Rename Atlas") {
+            state.is_atlas_rename = true
+        }
     }
 
-    core.End()
+    if state.is_atlas_rename {
+        mu.begin_window(ctx, "Rename Atlas", {128, 128, 256, 80}, {.NO_RESIZE, .NO_CLOSE})
+        @(static)
+        length: int
+
+        mu.layout_row(ctx, {-1})
+        mu.textbox(ctx, state.atlas_rename_buffer[:], &length)
+
+        if .SUBMIT in mu.button(ctx, "Submit") {
+            should_close := true
+
+            for atlas in project.atlas {
+                if atlas.name == string(state.atlas_rename_buffer[:length]) {
+                    should_close = false
+                    break
+                }
+            }
+
+            if should_close {
+                delete(state.current_atlas.name)
+                state.current_atlas.name = strings.clone_from_bytes(state.atlas_rename_buffer[:length])
+
+                state.is_atlas_rename = false
+                length = 0
+            }
+        }
+
+        mu.end_window(ctx)
+    }
 }

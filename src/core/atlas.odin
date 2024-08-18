@@ -78,7 +78,16 @@ CreateNewAtlas :: proc(project: ^Project, name: string) {
     append(&project.atlas, new_atlas)
 }
 
-// TODO: Store sprites in atlas rather than 1 list to make it easier to delete an atlas
+RenameAtlas :: proc(atlas: ^Atlas, name: string) {
+    delete(atlas.name)
+    atlas.name = strings.clone(name)
+
+    for &sprite in atlas.sprites {
+        delete(sprite.name)
+        sprite.atlas = strings.clone(name)
+    }
+}
+
 DeleteAtlas :: proc(project: ^Project, index: int) {
     atlas := project.atlas[index]
 

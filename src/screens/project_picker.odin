@@ -97,8 +97,6 @@ UpdateProjectPicker :: proc(project: ^core.Project) {
                 if .SUBMIT in mu.button(ctx, "Load") {
                     err: core.ProjectError
                     project^, err = core.LoadProject(project_item.file)
-
-                    fmt.println(project_item.file)
                 }
 
                 if .SUBMIT in mu.button(ctx, "Delete") {
