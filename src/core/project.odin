@@ -1,7 +1,9 @@
 package core
 
 import "core:encoding/json"
+import "core:fmt"
 import "core:os"
+import "core:path/filepath"
 import "core:strings"
 
 import rl "vendor:raylib"
@@ -135,7 +137,7 @@ CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center:
         name = name,
         file = project_file,
         config = {
-            assets_dir = project_assets,
+            assets_dir = strings.concatenate({project_assets, filepath.SEPARATOR_STRING}, context.temp_allocator),
             copy_files = copy_files,
             auto_center = auto_center,
             atlas_size = atlas_size,
@@ -222,6 +224,7 @@ WriteProject :: proc(project: ^Project) -> ProjectError {
     if project_data, error := json.marshal(project_to_write, options, context.temp_allocator); error == nil {
         os.write_entire_file(project.file, project_data)
     } else {
+        rl.TraceLog(.ERROR, "[JSON] Failed to serialise: %s", fmt.tprint(error))
         return .Failed_Serialisation
     }
 

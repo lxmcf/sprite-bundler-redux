@@ -1,8 +1,9 @@
 package screens
 
+import "core:crypto"
+import "core:encoding/uuid"
 import "core:os"
 import "core:slice"
-import "core:strconv"
 import "core:strings"
 
 import mu "vendor:microui"
@@ -156,6 +157,7 @@ HandleShortcuts :: proc(project: ^core.Project) {
 
 @(private = "file")
 HandleDroppedFiles :: proc(project: ^core.Project) {
+    context.random_generator = crypto.random_generator()
     if rl.IsFileDropped() {
         files := rl.LoadDroppedFiles()
         defer rl.UnloadDroppedFiles(files)
@@ -166,34 +168,35 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 
                 if !rl.IsFileExtension(path, ".png") do continue
 
-                texture := rl.LoadImage(path)
+                image := rl.LoadImage(path)
+                name := strings.clone_from_cstring(rl.GetFileNameWithoutExt(path))
 
                 if project.config.copy_files {
-                    buffer: [4]u8
-                    result := strconv.itoa(buffer[:], len(state.current_atlas.sprites))
-                    current_filename := rl.GetFileNameWithoutExt(path)
-                    current_extension := rl.GetFileExtension(path)
-
-                    new_filename := strings.concatenate(
-                        {string(current_filename), "_", result, string(current_extension)},
+                    id := uuid.generate_v7_basic()
+                    filename := strings.concatenate(
+                        {project.config.assets_dir, uuid.to_string(id, context.temp_allocator), ".png"},
                         context.temp_allocator,
                     )
 
-                    new_path := util.CreatePath(
-                        {project.config.assets_dir, string(new_filename)},
-                        context.temp_allocator,
-                    )
-                    path = strings.clone_to_cstring(new_path, context.temp_allocator)
+                    for os.is_file(filename) {
+                        id = uuid.generate_v7_basic()
+                        filename = strings.concatenate(
+                            {project.config.assets_dir, uuid.to_string(id, context.temp_allocator), ".png"},
+                            context.temp_allocator,
+                        )
+                    }
 
-                    rl.ExportImage(texture, path)
+                    path = strings.clone_to_cstring(filename, context.temp_allocator)
+
+                    rl.ExportImage(image, path)
                 }
 
                 sprite: core.Sprite = {
-                    name   = strings.clone_from_cstring(rl.GetFileNameWithoutExt(path)),
+                    name   = name,
                     file   = strings.clone_from_cstring(path),
                     atlas  = strings.clone(state.current_atlas.name),
-                    image  = texture,
-                    source = {0, 0, f32(texture.width), f32(texture.height)},
+                    image  = image,
+                    source = {0, 0, f32(image.width), f32(image.height)},
                 }
 
                 if project.config.auto_center {
@@ -272,8 +275,7 @@ PackSprites :: proc(project: ^core.Project) {
                 rl.TraceLog(.DEBUG, "Delete error ID [%d]", error)
             }
 
-            delete(sprite.name)
-            delete(sprite.file)
+            util.DeleteStrings(sprite.name, sprite.file, sprite.atlas)
 
             rl.UnloadImage(sprite.image)
             ordered_remove(&state.current_atlas.sprites, index)
