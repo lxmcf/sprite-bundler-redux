@@ -23,8 +23,7 @@ EditorState :: struct {
     selected_sprite:      ^core.Sprite,
 
     // Buffers
-    atlas_rename_buffer:  [64]byte,
-    sprite_rename_buffer: [64]byte,
+    is_dialog_open:       bool,
     is_atlas_rename:      bool,
     is_sprite_rename:     bool,
 
@@ -54,12 +53,17 @@ UpdateEditor :: proc(project: ^core.Project) {
 
     state.cursor = .DEFAULT
 
+    state.is_dialog_open = state.is_atlas_rename || state.is_sprite_rename
+
     UpdateCamera()
 
     HandleShortcuts(project)
     HandleDroppedFiles(project)
 
-    if rl.GetMouseY() < i32(TOOLBAR_HEIGHT) do return
+    if rl.GetMouseY() < i32(TOOLBAR_HEIGHT) || state.is_dialog_open {
+        rl.SetMouseCursor(.DEFAULT)
+        return
+    }
 
     mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
     for &sprite in state.current_atlas.sprites {
@@ -296,9 +300,10 @@ DrawMainEditor :: proc(project: ^core.Project) {
     rl.DrawTextureV(project.background, {}, rl.WHITE)
     rl.DrawTextureV(state.current_atlas.texture, {}, rl.WHITE)
 
-    for sprite in state.current_atlas.sprites {
-        if state.selected_sprite != nil {
-            if strings.compare(state.selected_sprite.name, sprite.name) != 0 {
+    // TODO: Work out how to properly use the scissor modes to minimise this
+    if state.selected_sprite != nil {
+        for sprite in state.current_atlas.sprites {
+            if state.selected_sprite.name != sprite.name {
                 rl.DrawRectangleRec(sprite.source, rl.Fade(rl.BLACK, 0.5))
             }
         }
@@ -368,14 +373,17 @@ DrawEditorGui :: proc(project: ^core.Project) {
         @(static)
         length: int
 
+        @(static)
+        atlas_rename_buffer: [64]byte
+
         mu.layout_row(ctx, {-1})
-        mu.textbox(ctx, state.atlas_rename_buffer[:], &length)
+        mu.textbox(ctx, atlas_rename_buffer[:], &length)
 
         if .SUBMIT in mu.button(ctx, "Submit") {
             should_close := true
 
             for atlas in project.atlas {
-                if atlas.name == string(state.atlas_rename_buffer[:length]) {
+                if atlas.name == string(atlas_rename_buffer[:length]) {
                     should_close = false
                     break
                 }
@@ -383,7 +391,7 @@ DrawEditorGui :: proc(project: ^core.Project) {
 
             if should_close {
                 delete(state.current_atlas.name)
-                state.current_atlas.name = strings.clone_from_bytes(state.atlas_rename_buffer[:length])
+                state.current_atlas.name = strings.clone_from_bytes(atlas_rename_buffer[:length])
 
                 state.is_atlas_rename = false
                 length = 0
@@ -391,5 +399,9 @@ DrawEditorGui :: proc(project: ^core.Project) {
         }
 
         mu.end_window(ctx)
+    }
+
+    if state.is_sprite_rename {
+
     }
 }

@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:mem"
 import "core:os"
 
+// import mu "vendor:microui"
 import rl "vendor:raylib"
 
 import "bundler:core"
@@ -12,7 +13,7 @@ import "bundler:screens"
 FPS_MINIMUM :: 60
 WINDOW_WIDTH :: 1280
 WINDOW_HEIGHT :: 720
-WINDOW_TITLE :: "Sprite Bundler"
+WINDOW_TITLE :: "Sprite Packer"
 
 TEST_PROJECT :: "Hello World"
 
@@ -96,8 +97,6 @@ main :: proc() {
         when ODIN_DEBUG {
             DebugDrawFPS()
         }
-
-        free_all(context.temp_allocator)
 
         if current_project.is_loaded && current_screen != .EDITOR {
             UnloadCurrentScreen(current_screen)
