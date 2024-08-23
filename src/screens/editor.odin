@@ -49,6 +49,7 @@ InitEditor :: proc(project: ^core.Project) {
     state.camera.zoom = 0.5
 
     state.current_atlas = &project.atlas[0]
+    state.selected_sprite = nil
 }
 
 UnloadEditor :: proc() {}
@@ -422,7 +423,7 @@ DrawEditorGui :: proc(project: ^core.Project) {
         length: int
 
         @(static)
-        atlas_rename_buffer: [64]byte
+        atlas_rename_buffer: [mu.MAX_TEXT_STORE]byte
 
         mu.layout_row(ctx, {-1})
         mu.textbox(ctx, atlas_rename_buffer[:], &length)
@@ -460,7 +461,7 @@ DrawEditorGui :: proc(project: ^core.Project) {
         length: int
 
         @(static)
-        sprite_rename_buffer: [64]byte
+        sprite_rename_buffer: [mu.MAX_TEXT_STORE]byte
 
         mu.layout_row(ctx, {-1})
         mu.textbox(ctx, sprite_rename_buffer[:], &length)

@@ -4,7 +4,6 @@ import "core:fmt"
 import "core:mem"
 import "core:os"
 
-// import mu "vendor:microui"
 import rl "vendor:raylib"
 
 import "bundler:core"
@@ -72,8 +71,6 @@ main :: proc() {
     rl.SetTargetFPS(max_fps <= 0 ? FPS_MINIMUM : max_fps)
 
     if !os.is_dir("projects") do os.make_directory("projects")
-
-    core.CreateNewProject(TEST_PROJECT, 1024, false, false)
 
     current_screen := ApplicationScreen.PROJECT_PICKER
     current_project: core.Project

@@ -13,7 +13,7 @@ import mu "vendor:microui"
 import rl "vendor:raylib"
 
 WINDOW_WIDTH :: 640
-WINDOW_HEIGHT :: 360
+WINDOW_HEIGHT :: 332
 
 @(private = "file")
 ProjectPickerState :: struct {
@@ -24,8 +24,9 @@ ProjectPickerState :: struct {
 state: ProjectPickerState
 
 ProjectListItem :: struct {
-    name: string,
-    file: string,
+    name:      string,
+    directory: string,
+    file:      string,
 }
 
 InitProjectPicker :: proc() {
@@ -81,6 +82,7 @@ UpdateProjectPicker :: proc(project: ^core.Project) {
         WINDOW_HEIGHT,
     }
 
+    // NOTE: This is awful, maybe I should just remake raygui?
     if mu.window(ctx, "Projects", rect, {.NO_RESIZE, .NO_CLOSE}) {
         mu.layout_row(ctx, {-1}, 192)
         mu.begin_panel(ctx, "load_project_panel", {.NO_SCROLL})
@@ -100,8 +102,9 @@ UpdateProjectPicker :: proc(project: ^core.Project) {
                 }
 
                 if .SUBMIT in mu.button(ctx, "Delete") {
-                    rl.TraceLog(.DEBUG, "You clicked on %s", project_item.name)
+                    rl.TraceLog(.WARNING, "[PROJECT] Deletion not yet added!")
                 }
+
                 mu.pop_id(ctx)
             }
         } else {
@@ -112,38 +115,50 @@ UpdateProjectPicker :: proc(project: ^core.Project) {
         mu.end_panel(ctx)
 
         mu.layout_row(ctx, {-1}, -1)
-        mu.begin_panel(ctx, "new_project_panel")
+        mu.begin_panel(ctx, "new_project_panel", {.NO_SCROLL})
+
+        mu.layout_row(ctx, {-1, -1}, -1)
 
         @(static)
         copy_files, auto_center: bool
 
-        mu.layout_row(ctx, {192, 256})
-
-        mu.layout_begin_column(ctx)
-        mu.layout_row(ctx, {-1})
+        mu.layout_row(ctx, {128, 128})
         mu.checkbox(ctx, "Copy Sprite Files", &copy_files)
         mu.checkbox(ctx, "Auto Center Origin", &auto_center)
-        mu.layout_end_column(ctx)
 
-        mu.layout_begin_column(ctx)
-        mu.label(ctx, "Test")
+        @(static)
+        atlas_size: mu.Real
 
-        if .SUBMIT in mu.button(ctx, "Test Pop") {
-            mu.open_popup(ctx, "Size")
+        @(static)
+        project_name_buffer: [mu.MAX_TEXT_STORE]byte
+
+        @(static)
+        project_name_length: int
+        mu.label(ctx, "Atlas Size")
+        mu.slider(ctx, &atlas_size, 512, 8192, 512)
+
+        mu.label(ctx, "Project Name")
+        mu.textbox(ctx, project_name_buffer[:], &project_name_length)
+
+        mu.layout_row(ctx, {-1})
+        if .SUBMIT in mu.button(ctx, "Create Project") {
+            project_name := string(project_name_buffer[:project_name_length])
+
+            err := core.CreateNewProject(project_name, int(atlas_size), copy_files, auto_center)
+
+            if err == .None {
+                project_file_path := util.CreatePath(
+                    {"projects", project_name, "project.lspp"},
+                    context.temp_allocator,
+                )
+
+                if os.is_file(project_file_path) {
+                    project^, err = core.LoadProject(project_file_path)
+                }
+            }
         }
-
-        if mu.begin_popup(ctx, "Size") {
-            mu.button(ctx, "Line 1")
-            mu.button(ctx, "Line 2")
-            mu.button(ctx, "Line 3")
-            mu.end_popup(ctx)
-        }
-
-        mu.layout_end_column(ctx)
         mu.end_panel(ctx)
     }
 }
 
-DrawProjectPicker :: proc() {
-
-}
+DrawProjectPicker :: proc() {}
