@@ -1,7 +1,9 @@
+// FIXME: This really does not need to be 400+ lines...
 package screens
 
 import "core:crypto"
 import "core:encoding/uuid"
+import "core:math"
 import "core:os"
 import "core:slice"
 import "core:strings"
@@ -19,13 +21,16 @@ EditorState :: struct {
 
     // Selected elements
     current_atlas_index:  int,
-    current_atlas:        ^core.Atlas, // NOTE: May not need a pointer here just yet
+    current_atlas:        ^core.Atlas,
     selected_sprite:      ^core.Sprite,
 
     // Buffers
     is_dialog_open:       bool,
     is_atlas_rename:      bool,
     is_sprite_rename:     bool,
+
+    // Editors
+    should_edit_origin:   bool,
 
     // UI controls
     save_project:         bool,
@@ -77,9 +82,26 @@ UpdateEditor :: proc(project: ^core.Project) {
         }
     }
 
-    if rl.IsMouseButtonReleased(.LEFT) && state.selected_sprite != nil {
-        if !rl.CheckCollisionPointRec(mouse_position, state.selected_sprite.source) {
-            state.selected_sprite = nil
+    if state.selected_sprite != nil {
+        if state.should_edit_origin {
+            offset := mouse_position - {state.selected_sprite.source.x, state.selected_sprite.source.y}
+
+            offset.x = clamp(math.round(offset.x), 0, state.selected_sprite.source.width)
+            offset.y = clamp(math.round(offset.y), 0, state.selected_sprite.source.height)
+
+            state.selected_sprite.origin = offset
+
+            state.cursor = .RESIZE_ALL
+
+            if rl.IsMouseButtonPressed(.LEFT) {
+                state.should_edit_origin = false
+            }
+        } else {
+            if rl.IsMouseButtonReleased(.LEFT) {
+                if !rl.CheckCollisionPointRec(mouse_position, state.selected_sprite.source) {
+                    state.selected_sprite = nil
+                }
+            }
         }
     }
 
@@ -138,7 +160,7 @@ HandleEditorActions :: proc(project: ^core.Project) {
 @(private = "file")
 HandleShortcuts :: proc(project: ^core.Project) {
     // Centre camera
-    if rl.IsKeyReleased(.Z) {
+    if rl.IsKeyReleased(.Z) && !state.should_edit_origin {
         screen: rl.Vector2 = {f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight())}
 
         state.camera.offset = screen / 2
@@ -147,6 +169,15 @@ HandleShortcuts :: proc(project: ^core.Project) {
         state.camera.zoom = 0.5
     }
 
+    // Centre sprite origin
+    if rl.IsKeyReleased(.Z) && state.should_edit_origin {
+        state.selected_sprite.origin = {state.selected_sprite.source.width, state.selected_sprite.source.height} / 2
+
+        state.should_edit_origin = false
+    }
+
+    if rl.IsKeyPressed(.V) do state.should_edit_origin = !state.should_edit_origin
+
     if rl.IsKeyDown(.LEFT_CONTROL) {
         if rl.IsKeyPressed(.S) do state.save_project = true
         if rl.IsKeyPressed(.E) do state.export_project = true
@@ -154,7 +185,11 @@ HandleShortcuts :: proc(project: ^core.Project) {
         if rl.IsKeyPressed(.Y) do state.delete_current_atlas = true
 
         if rl.IsKeyPressed(.R) {
-            state.is_atlas_rename = true
+            if state.selected_sprite != nil {
+                state.is_sprite_rename = true
+            } else {
+                state.is_atlas_rename = true
+            }
         }
 
         change_atlas := int(rl.IsKeyPressed(.RIGHT_BRACKET)) - int(rl.IsKeyPressed(.LEFT_BRACKET))
@@ -220,7 +255,7 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 
             core.GenerateAtlas(state.current_atlas)
         } else {
-            rl.TraceLog(.ERROR, "FILE: Did not find any files to sort!")
+            rl.TraceLog(.ERROR, "[FILE] Did not find any files to sort!")
         }
     }
 }
@@ -274,12 +309,12 @@ PackSprites :: proc(project: ^core.Project) {
 
         within_y := int(current_rectangle.y + current_rectangle.height) <= project.config.atlas_size
         if !within_y {
-            rl.TraceLog(.DEBUG, "DELETE: Deleting sprite[%d] %s", index, sprite.name)
+            rl.TraceLog(.DEBUG, "[DELETE] Deleting sprite[%d] %s", index, sprite.name)
 
             if project.config.copy_files {
                 error := os.remove(sprite.file)
 
-                rl.TraceLog(.DEBUG, "Delete error ID [%d]", error)
+                rl.TraceLog(.DEBUG, "[DELETE] Delete error ID [%d]", error)
             }
 
             util.DeleteStrings(sprite.name, sprite.file, sprite.atlas)
@@ -308,15 +343,21 @@ DrawMainEditor :: proc(project: ^core.Project) {
             }
         }
     }
-
-    rl.DrawText(strings.clone_to_cstring(state.current_atlas.name, context.temp_allocator), 0, -80, 80, rl.WHITE)
 }
 
 @(private = "file")
 DrawEditorGui :: proc(project: ^core.Project) {
+    rl.DrawTextEx(
+        rl.GetFontDefault(),
+        strings.clone_to_cstring(state.current_atlas.name, context.temp_allocator),
+        rl.GetWorldToScreen2D({}, state.camera) + {0, -48},
+        40,
+        1,
+        rl.WHITE,
+    )
+
     if state.selected_sprite != nil {
         position: rl.Vector2 = {state.selected_sprite.source.x, state.selected_sprite.source.y}
-
         adjusted_position: rl.Vector2 = rl.GetWorldToScreen2D(position, state.camera)
 
         scaled_rect_size: rl.Vector2 =
@@ -331,7 +372,7 @@ DrawEditorGui :: proc(project: ^core.Project) {
         position_origin := rl.GetWorldToScreen2D(position + state.selected_sprite.origin, state.camera)
         rl.DrawCircleLinesV(position_origin, 4, rl.RED)
 
-        if !rl.Vector2Equals(state.selected_sprite.origin, {}) {
+        if !rl.Vector2Equals(state.selected_sprite.origin, {}) || state.should_edit_origin {
             rl.DrawLineV(
                 {adjusted_position.x, position_origin.y},
                 {adjusted_position.x + scaled_rect_size.x, position_origin.y},
@@ -353,7 +394,7 @@ DrawEditorGui :: proc(project: ^core.Project) {
         container := mu.get_current_container(ctx)
         container.rect.w = rl.GetScreenWidth()
 
-        mu.layout_row(ctx, {64, 64, 96})
+        mu.layout_row(ctx, {64, 64, 96, 96})
 
         if .SUBMIT in mu.button(ctx, "Save") {
             state.save_project = true
@@ -366,10 +407,17 @@ DrawEditorGui :: proc(project: ^core.Project) {
         if .SUBMIT in mu.button(ctx, "Rename Atlas") {
             state.is_atlas_rename = true
         }
+
+        if .SUBMIT in mu.button(ctx, "Rename Sprite") {
+            if state.selected_sprite != nil {
+                state.is_sprite_rename = true
+            }
+        }
     }
 
     if state.is_atlas_rename {
         mu.begin_window(ctx, "Rename Atlas", {128, 128, 256, 80}, {.NO_RESIZE, .NO_CLOSE})
+        defer mu.end_window(ctx)
         @(static)
         length: int
 
@@ -393,15 +441,47 @@ DrawEditorGui :: proc(project: ^core.Project) {
                 delete(state.current_atlas.name)
                 state.current_atlas.name = strings.clone_from_bytes(atlas_rename_buffer[:length])
 
+                for &sprite in state.current_atlas.sprites {
+                    delete(sprite.atlas)
+
+                    sprite.atlas = strings.clone_from_bytes(atlas_rename_buffer[:length])
+                }
+
                 state.is_atlas_rename = false
                 length = 0
             }
         }
-
-        mu.end_window(ctx)
     }
 
     if state.is_sprite_rename {
+        mu.begin_window(ctx, "Rename Sprite", {128, 128, 256, 80}, {.NO_RESIZE, .NO_CLOSE})
+        defer mu.end_window(ctx)
+        @(static)
+        length: int
 
+        @(static)
+        sprite_rename_buffer: [64]byte
+
+        mu.layout_row(ctx, {-1})
+        mu.textbox(ctx, sprite_rename_buffer[:], &length)
+
+        if .SUBMIT in mu.button(ctx, "Submit") {
+            should_close := true
+
+            for sprite in state.current_atlas.sprites {
+                if sprite.name == string(sprite_rename_buffer[:length]) {
+                    should_close = false
+                    break
+                }
+            }
+
+            if should_close {
+                delete(state.selected_sprite.name)
+                state.selected_sprite.name = strings.clone_from_bytes(sprite_rename_buffer[:length])
+
+                state.is_sprite_rename = false
+                length = 0
+            }
+        }
     }
 }

@@ -31,7 +31,7 @@ ProjectListItem :: struct {
 InitProjectPicker :: proc() {
     matches, err := filepath.glob("projects/*/*.lspp", context.temp_allocator)
     if err == .Syntax_Error {
-        rl.TraceLog(.ERROR, "INVALID SYNTAX")
+        rl.TraceLog(.ERROR, "[JSON] Invalid JSON syntax")
         return
     }
 
@@ -100,7 +100,7 @@ UpdateProjectPicker :: proc(project: ^core.Project) {
                 }
 
                 if .SUBMIT in mu.button(ctx, "Delete") {
-                    rl.TraceLog(.INFO, "You deleted on %s", project_item.name)
+                    rl.TraceLog(.DEBUG, "You clicked on %s", project_item.name)
                 }
                 mu.pop_id(ctx)
             }

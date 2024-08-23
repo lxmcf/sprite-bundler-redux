@@ -63,7 +63,7 @@ SpriteToReadable :: proc(sprite: WriteableSprite) -> Sprite {
     if os.is_file(sprite.file) {
         readable.image = rl.LoadImage(strings.clone_to_cstring(sprite.file, context.temp_allocator))
     } else {
-        rl.TraceLog(.ERROR, "Failed to load file [%s]", sprite.file)
+        rl.TraceLog(.ERROR, "[FILE] Failed to load file [%s]", sprite.file)
 
         readable.image = rl.GenImageColor(i32(sprite.source.width), i32(sprite.source.height), rl.MAGENTA)
     }

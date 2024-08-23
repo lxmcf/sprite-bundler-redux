@@ -187,12 +187,12 @@ UnloadProject :: proc(project: ^Project) {
     util.DeleteStrings(project.name, project.file, project.directory, project.config.assets_dir)
 
     for atlas, atlas_index in project.atlas {
-        rl.TraceLog(.DEBUG, "DELETE: Deleting atlas[%d] %s", atlas_index, atlas.name)
+        rl.TraceLog(.DEBUG, "[DELETE] Deleting atlas[%d] %s", atlas_index, atlas.name)
         rl.UnloadImage(atlas.image)
         rl.UnloadTexture(atlas.texture)
 
         for sprite, sprite_index in atlas.sprites {
-            rl.TraceLog(.DEBUG, "DELETE: Deleting sprite[%d] %s", sprite_index, sprite.name)
+            rl.TraceLog(.DEBUG, "[DELETE] Deleting sprite[%d] %s", sprite_index, sprite.name)
             util.DeleteStrings(sprite.name, sprite.file, sprite.atlas)
 
             rl.UnloadImage(sprite.image)

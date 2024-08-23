@@ -17,6 +17,9 @@
 
 ---
 
+> [!NOTE]
+> LSPP is in early development and a lot of UI and code is very 'first pass' and `may` get a further pass to clean everything up
+
 Sprite Bundler Redux is a ground up rewrite of my old [Sprite Bundler](https://github.com/lxmcf/sprite-bundler) now rewritten in [Odin](https://odin-lang.org/) instead of C!
 
 The original ballooned from a simple project that would easily fit into a single C file to a more complex project driven tool that became unmanagable (Plus I broke it while refactoring), this version maintains the same and even massively expands on the originals functionality.
@@ -53,15 +56,23 @@ odin build src/ -out:application.exe -collection:bundler=src -vet -min-link-libs
 
 ---
 
+- Manage sprites
+    - Click a sprite to select it
+    - Press `V` to start editing the sprite origin and `LEFT CLICK` to set
+    - Press `Z` to center the origin of the selected sprite
+    - Press `CTRL + R` to rename the selected sprite
+
 - Add files to currently open atlas
     - Drop desired files over window, sprites will be sorted and packed automatically
 
 - Manage texture atlas'
     - Press `CTRL + N` to create a blank texture atlas (All atlas' will be the same size)
     - Press `CTRL + [` or `CTRL + ]` to navigate between atlas'
+    - Press `CTRL + R` with no sprite selected to rename the current atlas
+    - Press `CTRL + Y` to delete the current atlas
 
 - Camera controls
-    - Press `z` to center camera and reset zoom
+    - Press `Z` to center camera and reset zoom
     - Middle click or hold `LEFT ALT` and move mouse to pan
     - Scroll wheel to zoom
 
