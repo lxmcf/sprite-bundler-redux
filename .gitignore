@@ -1,5 +1,9 @@
 lspp
 lspp.exe
 out.txt
+a.out
 
 projects/
+
+*.lspp
+*.lspx

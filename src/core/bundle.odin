@@ -6,7 +6,7 @@ import "core:strings"
 import "bundler:util"
 import rl "vendor:raylib"
 
-BUNDLE_HEADER :: #config(CUSTOM_BUNDLE_HEADER, "LSPP")
+BUNDLE_HEADER :: #config(CUSTOM_BUNDLE_HEADER, "LSPX")
 BUNDLE_FILE :: #config(CUSTOM_BUNDLE_FILE, "bundle.lspx")
 
 BUNDLE_ATLAS_HEADER :: #config(CUSTOM_ATLAS_HEADER, "ATLS")
