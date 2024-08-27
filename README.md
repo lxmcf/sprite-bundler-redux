@@ -85,8 +85,12 @@ Why not, I have been working in nothing but C for well over 12 months now and al
 As I mentioned earlier, it ballooned too much and by the end was poorly coded with next to no string safety and a hand full of memory leaks, it would be less work to completely rewrite than refactor and update.
 
 #### Q) What are all the different file extensions for?
-- *.lspp - `L`xmcf `S`prite `P`acker `P`roject
-- *.lspx - `L`xmcf `S`prite `P`acker `X`bundle?
+- *.lspp - Lxmcf Sprite Packer Project
+- *.lspx - Lxmcf Sprite Packer Bundle
+
+#### Q) What does each executable do?
+- lspi - Lxmcf Sprite Packer Inspector - A CLI tool to insect bundles and extract data
+- lspp - Lxmcf Sprite Packer Program - The main application
 
 #### Q) Why is the bundle file size larger than the raw images?
 I do use compression on the texture atlas data ([Small Deflate](https://github.com/fxfactorial/sdefl)), it is not perfect and only basic, however the bundle will also store some arbitrary [FourCC style](https://en.wikipedia.org/wiki/FourCC) codes to easily identify where an atlas or sprite are in the exported bundle. Data to identify the position of the sprite in the atlas, it's origin point and animation frames are also stored.

@@ -37,16 +37,19 @@ ExportBundle :: proc(project: Project) -> BundleError {
     project_version := i32(project.version)
     atlas_count := i32(len(project.atlas))
     total_sprite_count := i32(project_sprite_count)
+    atlas_size := i32(project.config.atlas_size)
 
     // BUNDLE INFO -> Layout
     // [4 BYTES] Header FourCC
     // [4 BYTES] Bundle version
     // [4 BYTES] Texture atlas count
     // [4 BYTES] Sprite count
+    // [4 BYTES] Atlas size
     util.WriteStringAligned(handle, BUNDLE_HEADER[:4])
     util.WritePtrAligned(handle, &project_version, size_of(i32))
     util.WritePtrAligned(handle, &atlas_count, size_of(i32))
     util.WritePtrAligned(handle, &total_sprite_count, size_of(i32))
+    util.WritePtrAligned(handle, &atlas_size, size_of(i32))
 
     // ATLAS'
     for atlas in project.atlas {
@@ -155,17 +158,19 @@ ImportBundle :: proc(filename: string) -> BundleError {
         os.read(handle, chunk_header)
 
         if strings.compare(string(chunk_header), BUNDLE_HEADER) == 0 {
-            project_version, atlas_count, sprite_count: i32
+            project_version, atlas_count, sprite_count, atlas_size: i32
             current_position, _ := os.seek(handle, 0, os.SEEK_CUR)
             rl.TraceLog(.DEBUG, "---> Found bundle at chunk[%d]", current_position / BUNDLE_BYTE_ALIGNMENT)
 
-            util.ReadPtrAligned(handle, &project_version, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
-            util.ReadPtrAligned(handle, &atlas_count, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
-            util.ReadPtrAligned(handle, &sprite_count, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
+            util.ReadPtrAligned(handle, &project_version, size_of(i32))
+            util.ReadPtrAligned(handle, &atlas_count, size_of(i32))
+            util.ReadPtrAligned(handle, &sprite_count, size_of(i32))
+            util.ReadPtrAligned(handle, &atlas_size, size_of(i32))
 
             rl.TraceLog(.DEBUG, "\t\tProject version:  %d", project_version)
             rl.TraceLog(.DEBUG, "\t\tAtlas count:      %d", atlas_count)
             rl.TraceLog(.DEBUG, "\t\tSprite count:     %d", sprite_count)
+            rl.TraceLog(.DEBUG, "\t\tAtlas Size:       %d", atlas_size)
 
             if sprite_count == 0 do return .No_Sprites
             if atlas_count == 0 do return .No_Atlas
