@@ -41,6 +41,8 @@ GetPadding :: proc(data_length, alignment: int) -> int {
     return data_length % alignment == 0 ? 0 : alignment - (data_length % alignment) % alignment
 }
 
+// TODO: Remove and just have an align function
+// NOTE: Upon re-reading how I have done this... Do not do this
 WriteAligned :: proc(handle: File, data: []byte, alignment: int = 0) -> (int, os.Errno) {
     padding: int
     bytes_written, error := os.write(handle, data)

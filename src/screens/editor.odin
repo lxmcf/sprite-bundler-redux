@@ -198,6 +198,10 @@ HandleShortcuts :: proc(project: ^core.Project) {
             state.current_atlas_index = clamp(state.current_atlas_index + change_atlas, 0, len(project.atlas) - 1)
             state.current_atlas = &project.atlas[state.current_atlas_index]
         }
+
+        if rl.IsKeyPressed(.P) {
+            core.ImportBundle("bundle.lspx")
+        }
     }
 }
 

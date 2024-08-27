@@ -30,6 +30,7 @@ void TestFunc (const char* filename);
 #define LSPP__BUNDLE_ALIGNMENT 4
 
 #define LSPP__BUNDLE_HEADER "LSPX"
+#define LSPP__BUNDLE_EOF    "BEOF"
 #define LSPP__ATLAS_HEADER  "ATLS"
 #define LSPP__SPRITE_HEADER "SPRT"
 
@@ -62,25 +63,22 @@ static long falgin (FILE* stream, int alignment) {
 }
 
 void TestFunc (const char* filename) {
-    int file_size   = GetFileLength (filename);
-    int chunk_count = file_size / LSPP__BUNDLE_ALIGNMENT;
-
     char* header_buffer = (char*)malloc (sizeof (char) * 4);
+    FILE* handle        = fopen (filename, "rb");
+    int file_size       = GetFileLength (filename);
 
-    FILE* handle = fopen (filename, "rb");
-
-    for (int i = 0; i < chunk_count; i++) {
+    while (strncmp (header_buffer, LSPP__BUNDLE_EOF, 4) != 0) {
         long offset = 0;
 
         fread (header_buffer, sizeof (char), LSPP__BUNDLE_ALIGNMENT, handle);
 
         if (strncmp (header_buffer, LSPP__BUNDLE_HEADER, 4) == 0) {
-            TraceLog (LOG_INFO, "Found header at chunk[%d]", i);
+            TraceLog (LOG_INFO, "Found header at chunk[%d]", ftell (handle) / 4);
             continue;
         }
 
         if (strncmp (header_buffer, LSPP__SPRITE_HEADER, 4) == 0) {
-            TraceLog (LOG_INFO, "Found sprite at chunk[%d]", i);
+            TraceLog (LOG_INFO, "Found sprite at chunk[%d]", ftell (handle) / 4);
 
             int frame_count, atlas_name_length, atlas_index, name_length;
             fread (&frame_count, sizeof (int), 1, handle);
@@ -125,7 +123,7 @@ void TestFunc (const char* filename) {
         }
 
         if (strncmp (header_buffer, LSPP__ATLAS_HEADER, 4) == 0) {
-            TraceLog (LOG_INFO, "Found atlas at chunk[%d]", i);
+            TraceLog (LOG_INFO, "Found atlas at chunk[%d]", ftell (handle) / 4);
 
             int sprite_count, name_length, compressed_size, decompressed_size;
             char* name;

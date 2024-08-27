@@ -7,6 +7,7 @@ import "bundler:util"
 import rl "vendor:raylib"
 
 BUNDLE_HEADER :: #config(CUSTOM_BUNDLE_HEADER, "LSPX")
+BUNDLE_EOF :: #config(CUSTOM_BUNDLE_EOF, "BEOF")
 BUNDLE_FILE :: #config(CUSTOM_BUNDLE_FILE, "bundle.lspx")
 
 BUNDLE_ATLAS_HEADER :: #config(CUSTOM_ATLAS_HEADER, "ATLS")
@@ -136,6 +137,8 @@ ExportBundle :: proc(project: Project) -> BundleError {
         }
     }
 
+    util.WriteStringAligned(handle, BUNDLE_EOF)
+
     return .None
 }
 
@@ -146,15 +149,15 @@ ImportBundle :: proc(filename: string) -> BundleError {
     file_size := os.file_size_from_path(filename)
     if file_size % BUNDLE_BYTE_ALIGNMENT != 0 do return .Invalid_Alignment
 
-    chunk_count := file_size / BUNDLE_BYTE_ALIGNMENT
     chunk_header := make([]byte, BUNDLE_BYTE_ALIGNMENT, context.temp_allocator)
 
-    for i in 0 ..< chunk_count {
+    for strings.compare(string(chunk_header), BUNDLE_EOF) != 0 {
         os.read(handle, chunk_header)
 
         if strings.compare(string(chunk_header), BUNDLE_HEADER) == 0 {
             project_version, atlas_count, sprite_count: i32
-            rl.TraceLog(.DEBUG, "---> Found bundle at block %d", i)
+            current_position, _ := os.seek(handle, 0, os.SEEK_CUR)
+            rl.TraceLog(.DEBUG, "---> Found bundle at chunk[%d]", current_position / BUNDLE_BYTE_ALIGNMENT)
 
             util.ReadPtrAligned(handle, &project_version, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
             util.ReadPtrAligned(handle, &atlas_count, size_of(i32), BUNDLE_BYTE_ALIGNMENT)
@@ -169,7 +172,8 @@ ImportBundle :: proc(filename: string) -> BundleError {
         }
 
         if strings.compare(string(chunk_header), BUNDLE_ATLAS_HEADER) == 0 {
-            rl.TraceLog(.DEBUG, "---> Found atlas at block %d", i)
+            current_position, _ := os.seek(handle, 0, os.SEEK_CUR)
+            rl.TraceLog(.DEBUG, "---> Found atlas at chunk[%d]", current_position / BUNDLE_BYTE_ALIGNMENT)
 
             name_length, decompressed_data_size, compressed_data_size, sprite_count: i32
             util.ReadPtrAligned(handle, &sprite_count, size_of(i32))
@@ -202,7 +206,8 @@ ImportBundle :: proc(filename: string) -> BundleError {
         }
 
         if strings.compare(string(chunk_header), BUNDLE_SPRITE_HEADER) == 0 {
-            rl.TraceLog(.DEBUG, "---> Found sprite at block %d", i)
+            current_position, _ := os.seek(handle, 0, os.SEEK_CUR)
+            rl.TraceLog(.DEBUG, "---> Found sprite at chunk[%d]", current_position / BUNDLE_BYTE_ALIGNMENT)
 
             frame_count, name_length, atlas_name_length, atlas_index: i32
 
@@ -222,6 +227,20 @@ ImportBundle :: proc(filename: string) -> BundleError {
             rl.TraceLog(.DEBUG, "\t\tAtlas name:      %s", atlas_name)
             rl.TraceLog(.DEBUG, "\t\tAtlas index:     %d", atlas_index)
             rl.TraceLog(.DEBUG, "\t\tSprite name:     %s", sprite_name)
+
+            rect: [4]f32
+            for i in 0 ..< 4 {
+                util.ReadPtrAligned(handle, &rect[i], size_of(f32))
+            }
+
+            rl.TraceLog(.DEBUG, "\t\tSprite Source:   [ %.f, %.f, %.f, %.f ]", rect[0], rect[1], rect[2], rect[3])
+
+            origin: [2]f32
+            for i in 0 ..< 2 {
+                util.ReadPtrAligned(handle, &origin[i], size_of(f32))
+            }
+
+            rl.TraceLog(.DEBUG, "\t\tSprite Origin:   [ %.f, %.f ]", origin[0], origin[1])
 
             continue
         }
