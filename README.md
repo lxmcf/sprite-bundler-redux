@@ -88,6 +88,9 @@ As I mentioned earlier, it ballooned too much and by the end was poorly coded wi
 - *.lspp - Lxmcf Sprite Packer Project
 - *.lspx - Lxmcf Sprite Packer Bundle
 
+#### Q) How do I actually use the sprite bundle in a project?
+You can find some basic loaders in the [loaders](github.com/lxmcf/sprite-bundler-redux/tree/main/loaders/) directory, alternatively a simple guide on [making a loader](https://github.com/lxmcf/sprite-bundler-redux/blob/main/docs/make-loader.md) is available!
+
 #### Q) What does each executable do?
 - lspi - Lxmcf Sprite Packer Inspector - A CLI tool to insect bundles and extract data
 - lspp - Lxmcf Sprite Packer Program - The main application

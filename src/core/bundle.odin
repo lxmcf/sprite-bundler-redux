@@ -42,7 +42,7 @@ ExportBundle :: proc(project: Project) -> BundleError {
     // BUNDLE INFO -> Layout
     // [4 BYTES] Header FourCC
     // [4 BYTES] Bundle version
-    // [4 BYTES] Texture atlas count
+    // [4 BYTES] Atlas count
     // [4 BYTES] Sprite count
     // [4 BYTES] Atlas size
     util.WriteStringAligned(handle, BUNDLE_HEADER[:4])
@@ -88,6 +88,7 @@ ExportBundle :: proc(project: Project) -> BundleError {
             util.WriteStringAligned(handle, BUNDLE_SPRITE_HEADER[:4])
 
             frame_count := i32(len(sprite.animation.frames))
+            frame_speed := sprite.animation.speed
             name_length := i32(len(sprite.name))
 
             atlas_name_length := i32(len(sprite.atlas))
@@ -98,12 +99,14 @@ ExportBundle :: proc(project: Project) -> BundleError {
 
             // SPRITE INFO -> Layout
             // [4 BYTES] Animation frame count
+            // [4 BYTES] Animation speed
             // [4 BYTES] Atlas name length
             // [4 BYTES] Atlas name
             // [4 BYTES] Atlas index
             // [4 BYTES] Name length
             // [^ BYTES] Name
             util.WritePtrAligned(handle, &frame_count, size_of(i32))
+            util.WritePtrAligned(handle, &frame_speed, size_of(f32))
             util.WritePtrAligned(handle, &atlas_name_length, size_of(i32))
             util.WriteStringAligned(handle, sprite.atlas, BUNDLE_BYTE_ALIGNMENT)
             util.WritePtrAligned(handle, &atlas_index, size_of(i32))
@@ -215,8 +218,10 @@ ImportBundle :: proc(filename: string) -> BundleError {
             rl.TraceLog(.DEBUG, "---> Found sprite at chunk[%d]", current_position / BUNDLE_BYTE_ALIGNMENT)
 
             frame_count, name_length, atlas_name_length, atlas_index: i32
+            frame_speed: f32
 
             util.ReadPtrAligned(handle, &frame_count, size_of(i32))
+            util.ReadPtrAligned(handle, &frame_speed, size_of(f32))
             util.ReadPtrAligned(handle, &atlas_name_length, size_of(i32))
 
             atlas_name := make([]byte, atlas_name_length, context.temp_allocator)
@@ -229,6 +234,7 @@ ImportBundle :: proc(filename: string) -> BundleError {
             util.ReadAligned(handle, sprite_name, BUNDLE_BYTE_ALIGNMENT)
 
             rl.TraceLog(.DEBUG, "\t\tFrame count:     %d", frame_count)
+            rl.TraceLog(.DEBUG, "\t\tFrame speed:     %f", frame_speed)
             rl.TraceLog(.DEBUG, "\t\tAtlas name:      %s", atlas_name)
             rl.TraceLog(.DEBUG, "\t\tAtlas index:     %d", atlas_index)
             rl.TraceLog(.DEBUG, "\t\tSprite name:     %s", sprite_name)
