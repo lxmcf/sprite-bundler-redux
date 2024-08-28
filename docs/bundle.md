@@ -7,7 +7,7 @@ The structure is split into different types of 'blocks', as listed below...
 `SPRT` - Sprite (52 Bytes*)
 `ATLS` - Atlas (16 Bytes*)
 
-Using this information you can easily follow [this guide](https://github.com/lxmcf/sprite-bundler-redux/blob/main/docs/make-loader.md) to build a loader for your use case, each
+Using this information you can easily follow [this guide](/docs/make-loader.md) to build a loader for your use case, each
 
 > [!NOTE]
 > Block size marked with * indicates they will contain data than can also be of variable length!

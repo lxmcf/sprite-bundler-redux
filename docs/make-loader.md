@@ -6,7 +6,7 @@ Building a loader for sprite bundles is a very easy task, all data is written in
 `ATLS` - Atlas, containing all information for a sprite
 `BEOF` - Bundle end of file, identifies where the end of file is, should ALWAYS be at the end!
 
-For a more in depth breakdown of the file structure and what order to read data; please see the [bundle structure](https://github.com/lxmcf/sprite-bundler-redux/blob/main/docs/bundle.md) documentation, some simple loaders can also be found in the [loaders](github.com/lxmcf/sprite-bundler-redux/tree/main/loaders/) directory!
+For a more in depth breakdown of the file structure and what order to read data; please see the [bundle structure](/docs/bundle.md) documentation, some simple loaders can also be found in the [loaders](/loaders) directory!
 
 If this does not cover your needs and you wish to make one for you prefered language, graphics library, mental torture, etc; a loader will follow the same structure as shown by the below psuedo code...
 
