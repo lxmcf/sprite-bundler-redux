@@ -43,7 +43,6 @@ void UnloadBundle (Bundle bundle);
 
 int IsBundleReady (Bundle bundle);
 
-#define LSPX_IMPL
 #if defined(LSPX_IMPLEMENTATION) || defined(LSPX_IMPL)
 
 #include <stdint.h>
