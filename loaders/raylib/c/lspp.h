@@ -4,10 +4,13 @@
 #define LSPP_H
 
 #include <raylib.h>
-#include <stdint.h>
 
 #if __SIZEOF_INT__ != 4 || __SIZEOF_FLOAT__ != 4
 #error "Expected int and float with size of 4 bytes!"
+#endif
+
+#if __SIZEOF_LONG__ != 8
+#error "Expected long with size of 8 bytes!"
 #endif
 
 typedef struct {
@@ -31,8 +34,13 @@ typedef struct {
 extern "C" {
 #endif
 
+int GetSpriteIndex (const char* name);
+
 Bundle LoadBundle (const char* filename);
+void SetActiveBundle (Bundle* bundle);
 void UnloadBundle (Bundle bundle);
+
+int IsBundleReady (Bundle bundle);
 
 #define LSPP_IMPLEMENTATION
 #if defined(LSPP_IMPLEMENTATION) || defined(LSPP_IMPL)
@@ -48,23 +56,68 @@ void UnloadBundle (Bundle bundle);
 #define LSPP__ATLAS_HEADER  "ATLS"
 #define LSPP__SPRITE_HEADER "SPRT"
 
+#define UNWRAP_RECTANGLE(r) r.x, r.y, r.width, r.height
+#define UNWRAP_VECTOR2(v)   v.x, v.y
+
+static Bundle* lspp__active_bundle = NULL;
+
 static long falign (FILE* stream, int alignment) {
     long offset = ftell (stream) % alignment;
     return offset > 0 ? fseek (stream, alignment - offset, SEEK_CUR) : 0;
 }
 
+static int lspp__compare (const void* a, const void* b) {
+    Sprite2D* sprite_a = (Sprite2D*)a;
+    Sprite2D* sprite_b = (Sprite2D*)b;
+
+    return strncmp (sprite_a->name, sprite_b->name, 128);
+}
+
+int GetSpriteIndex (const char* name) {
+    if (lspp__active_bundle == NULL)
+        return -1;
+
+    int left  = 0;
+    int right = lspp__active_bundle->sprite_count - 1;
+
+    while (left <= right) {
+        int middle = left + (right - left) / 2;
+
+        int compare = strncmp (lspp__active_bundle->sprite[middle].name, name, 128);
+
+        if (compare == 0) {
+            return middle;
+        } else if (compare < 0) {
+            left = middle + 1;
+        } else {
+            right = middle - 1;
+        }
+    }
+
+    return -1;
+}
+
 Bundle LoadBundle (const char* filename) {
-    char* header_buffer = (char*)malloc (sizeof (char) * 4);
+    char* header_buffer = (char*)calloc (4, sizeof (char));
     FILE* handle        = fopen (filename, "rb");
+    Bundle bundle       = CLITERAL (Bundle){0};
+
+    if (handle == NULL) {
+        free (header_buffer);
+
+        return bundle;
+    }
 
     fread (header_buffer, sizeof (char), LSPP__BUNDLE_ALIGNMENT, handle);
 
-    if (strncmp (header_buffer, LSPP__BUNDLE_HEADER, 4) != 0)
-        return CLITERAL (Bundle){0}; // Return an empty bundle
+    if (strncmp (header_buffer, LSPP__BUNDLE_HEADER, 4) != 0) {
+        free (header_buffer);
+        fclose (handle);
 
-#ifdef LSPP_LOG_DEBUG
+        return bundle;
+    }
+
     TraceLog (LOG_DEBUG, "--> Found header at chunk[%d]", ftell (handle) / LSPP__BUNDLE_ALIGNMENT);
-#endif
 
     int bundle_version, atlas_count, sprite_count, atlas_size;
     fread (&bundle_version, sizeof (int), 1, handle);
@@ -72,15 +125,12 @@ Bundle LoadBundle (const char* filename) {
     fread (&sprite_count, sizeof (int), 1, handle);
     fread (&atlas_size, sizeof (int), 1, handle);
 
-#ifdef LSPP_LOG_DEBUG
     TraceLog (LOG_DEBUG, "\t\tBundle Version: %d", bundle_version);
     TraceLog (LOG_DEBUG, "\t\tAtlas Count:    %d", atlas_count);
     TraceLog (LOG_DEBUG, "\t\tSprite Count:   %d", sprite_count);
     TraceLog (LOG_DEBUG, "\t\tAtlas Size:     %d", atlas_size);
-#endif
 
     // Create Bundle
-    Bundle bundle       = {0};
     bundle.sprite       = (Sprite2D*)calloc (sprite_count, sizeof (Sprite2D));
     bundle.atlas        = (Texture2D*)calloc (atlas_count, sizeof (Texture2D));
     bundle.atlas_count  = atlas_count;
@@ -93,45 +143,38 @@ Bundle LoadBundle (const char* filename) {
         fread (header_buffer, sizeof (char), LSPP__BUNDLE_ALIGNMENT, handle);
 
         if (strncmp (header_buffer, LSPP__SPRITE_HEADER, 4) == 0) {
-#ifdef LSPP_LOG_DEBUG
             TraceLog (LOG_DEBUG, "--> Found sprite at chunk[%d]", ftell (handle) / LSPP__BUNDLE_ALIGNMENT);
-#endif
 
-            int frame_count, atlas_name_length, atlas_index, name_length;
+            Sprite2D* current_sprite = &bundle.sprite[sprite_loaded];
+
+            int frame_count, atlas_name_length, name_length;
             fread (&frame_count, sizeof (int), 1, handle);
             fread (&atlas_name_length, sizeof (int), 1, handle);
 
-            char* atlas_name = (char*)calloc (atlas_name_length + 1, sizeof (char));
-            fread (atlas_name, sizeof (char), atlas_name_length, handle);
+            fseek (handle, atlas_name_length, SEEK_CUR);
             falign (handle, LSPP__BUNDLE_ALIGNMENT);
-            atlas_name[atlas_name_length] = '\0';
 
-            fread (&atlas_index, sizeof (int), 1, handle);
+            fread (&current_sprite->atlas_index, sizeof (int), 1, handle);
             fread (&name_length, sizeof (int), 1, handle);
 
-            char* name = (char*)calloc (name_length + 1, sizeof (char));
-            fread (name, sizeof (char), name_length, handle);
+            current_sprite->name = (char*)calloc (name_length + 1, sizeof (char));
+            fread (current_sprite->name, sizeof (char), name_length, handle);
             falign (handle, LSPP__BUNDLE_ALIGNMENT);
-            name[name_length] = '\0';
+            current_sprite->name[name_length] = '\0';
 
-            float rect[4];
-            for (int i = 0; i < 4; i++)
-                fread (&rect[i], sizeof (float), 1, handle);
+            fread (&current_sprite->source.x, sizeof (float), 1, handle);
+            fread (&current_sprite->source.y, sizeof (float), 1, handle);
+            fread (&current_sprite->source.width, sizeof (float), 1, handle);
+            fread (&current_sprite->source.height, sizeof (float), 1, handle);
 
-            float origin[2];
-            for (int i = 0; i < 2; i++)
-                fread (&origin[i], sizeof (float), 1, handle);
+            fread (&current_sprite->origin.x, sizeof (float), 1, handle);
+            fread (&current_sprite->origin.y, sizeof (float), 1, handle);
 
-#ifdef LSPP_LOG_DEBUG
             TraceLog (LOG_DEBUG, "\t\tFrame Count:    %d", frame_count);
-            TraceLog (LOG_DEBUG, "\t\tAtlas Name:     %s", atlas_name);
-            TraceLog (LOG_DEBUG, "\t\tAtlas Index:    %d", atlas_index);
-            TraceLog (LOG_DEBUG, "\t\tSprite Name:    %s", name);
-            TraceLog (LOG_DEBUG, "\t\tSprite Source:  [ %.f, %.f, %.f, %.f] ", rect[0], rect[1], rect[2], rect[3]);
-            TraceLog (LOG_DEBUG, "\t\tSprite Origin:  [ %.f, %.f ] ", origin[0], origin[1]);
-#endif
-            free (atlas_name);
-            free (name);
+            TraceLog (LOG_DEBUG, "\t\tAtlas Index:    %d", current_sprite->atlas_index);
+            TraceLog (LOG_DEBUG, "\t\tSprite Name:    %s", current_sprite->name);
+            TraceLog (LOG_DEBUG, "\t\tSprite Source:  [ %.f, %.f, %.f, %.f] ", UNWRAP_RECTANGLE (current_sprite->source));
+            TraceLog (LOG_DEBUG, "\t\tSprite Origin:  [ %.f, %.f ] ", UNWRAP_VECTOR2 (current_sprite->origin));
 
             sprite_loaded++;
 
@@ -139,9 +182,7 @@ Bundle LoadBundle (const char* filename) {
         }
 
         if (strncmp (header_buffer, LSPP__ATLAS_HEADER, 4) == 0) {
-#ifdef LSPP_LOG_DEBUG
             TraceLog (LOG_DEBUG, "--> Found atlas at chunk[%d]", ftell (handle) / LSPP__BUNDLE_ALIGNMENT);
-#endif
 
             int sprite_count, name_length, compressed_size, decompressed_size;
             char* name;
@@ -149,16 +190,14 @@ Bundle LoadBundle (const char* filename) {
             fread (&sprite_count, sizeof (int), 1, handle);
             fread (&name_length, sizeof (int), 1, handle);
 
-            name = (char*)malloc (name_length + 1);
+            name = (char*)calloc (name_length + 1, sizeof (char));
 
             fread (name, sizeof (char), name_length, handle);
             falign (handle, LSPP__BUNDLE_ALIGNMENT);
             name[name_length] = '\0';
 
-#ifdef LSPP_LOG_DEBUG
             TraceLog (LOG_DEBUG, "\t\tSprite Count:   %d", sprite_count);
             TraceLog (LOG_DEBUG, "\t\tAtlas Name:     %s", name);
-#endif
 
             fread (&compressed_size, sizeof (int), 1, handle);
 
@@ -192,23 +231,34 @@ Bundle LoadBundle (const char* filename) {
     free (header_buffer);
     fclose (handle);
 
+    qsort (bundle.sprite, bundle.sprite_count, sizeof (Sprite2D), lspp__compare);
     return bundle;
 }
 
-void UnloadBundle (Bundle bundle) {
-    for (int i = 0; i < bundle.atlas_count; i++)
-        UnloadTexture (bundle.atlas[i]);
-
-    for (int i = 0; i < bundle.sprite_count; i++)
-        free (bundle.sprite[i].name);
-
-    free (bundle.sprite);
+void SetActiveBundle (Bundle* bundle) {
+    lspp__active_bundle = bundle;
 }
+
+void UnloadBundle (Bundle bundle) {
+    if (IsBundleReady (bundle)) {
+        for (int i = 0; i < bundle.atlas_count; i++)
+            UnloadTexture (bundle.atlas[i]);
+
+        for (int i = 0; i < bundle.sprite_count; i++)
+            free (bundle.sprite[i].name);
+
+        free (bundle.sprite);
+    }
+}
+
+int IsBundleReady (Bundle bundle) {
+    return bundle.atlas_count > 0 && bundle.sprite_count > 0;
+}
+
+#endif // LSPP_IMPLEMENTATION || LSPP_IMPL
 
 #ifdef __cplusplus
 }
 #endif // __cplusplus
-
-#endif // LSPP_IMPLEMENTATION || LSPP_IMPL
 
 #endif // LSPP_H
