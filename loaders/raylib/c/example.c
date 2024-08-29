@@ -1,5 +1,4 @@
 #include <math.h>
-#include <raylib.h>
 
 #define LSPX_IMPL
 #include "lspx.h"

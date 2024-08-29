@@ -1,8 +1,9 @@
 lspp
-lspp.exe
 out.txt
 a.out
 
 projects/
 
 *.lspp
+*.exe
+*.obj

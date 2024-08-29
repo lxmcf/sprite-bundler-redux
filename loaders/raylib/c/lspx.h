@@ -45,7 +45,6 @@ int IsBundleReady (Bundle bundle);
 
 #if defined(LSPX_IMPLEMENTATION) || defined(LSPX_IMPL)
 
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -198,11 +197,11 @@ Bundle LoadBundle (const char* filename) {
 
     TraceLog (LOG_DEBUG, "--> Found header at chunk[%d]", ftell (handle) / LSPX__BUNDLE_ALIGNMENT);
 
-    int32_t bundle_version, atlas_count, sprite_count, atlas_size;
-    fread (&bundle_version, sizeof (int32_t), 1, handle);
-    fread (&atlas_count, sizeof (int32_t), 1, handle);
-    fread (&sprite_count, sizeof (int32_t), 1, handle);
-    fread (&atlas_size, sizeof (int32_t), 1, handle);
+    int bundle_version, atlas_count, sprite_count, atlas_size;
+    fread (&bundle_version, sizeof (int), 1, handle);
+    fread (&atlas_count, sizeof (int), 1, handle);
+    fread (&sprite_count, sizeof (int), 1, handle);
+    fread (&atlas_size, sizeof (int), 1, handle);
 
     TraceLog (LOG_DEBUG, "\t\tBundle Version: %d", bundle_version);
     TraceLog (LOG_DEBUG, "\t\tAtlas Count:    %d", atlas_count);
@@ -226,18 +225,18 @@ Bundle LoadBundle (const char* filename) {
 
             Sprite2D* current_sprite = &bundle.sprite[sprite_loaded];
 
-            int32_t frame_count, atlas_name_length, name_length;
+            int frame_count, atlas_name_length, name_length;
             float frame_speed;
 
-            fread (&frame_count, sizeof (int32_t), 1, handle);
+            fread (&frame_count, sizeof (int), 1, handle);
             fread (&frame_speed, sizeof (float), 1, handle);
-            fread (&atlas_name_length, sizeof (int32_t), 1, handle);
+            fread (&atlas_name_length, sizeof (int), 1, handle);
 
             fseek (handle, atlas_name_length, SEEK_CUR);
             falign (handle, LSPX__BUNDLE_ALIGNMENT);
 
-            fread (&current_sprite->atlas_index, sizeof (int32_t), 1, handle);
-            fread (&name_length, sizeof (int32_t), 1, handle);
+            fread (&current_sprite->atlas_index, sizeof (int), 1, handle);
+            fread (&name_length, sizeof (int), 1, handle);
 
             current_sprite->name = (char*)calloc (name_length + 1, sizeof (char));
             fread (current_sprite->name, sizeof (char), name_length, handle);
@@ -265,11 +264,11 @@ Bundle LoadBundle (const char* filename) {
         if (strncmp (header_buffer, LSPX__ATLAS_HEADER, 4) == 0) {
             TraceLog (LOG_DEBUG, "--> Found atlas at chunk[%d]", ftell (handle) / LSPX__BUNDLE_ALIGNMENT);
 
-            int32_t sprite_count, name_length, compressed_size, decompressed_size;
+            int sprite_count, name_length, compressed_size, decompressed_size;
             char* name;
 
-            fread (&sprite_count, sizeof (int32_t), 1, handle);
-            fread (&name_length, sizeof (int32_t), 1, handle);
+            fread (&sprite_count, sizeof (int), 1, handle);
+            fread (&name_length, sizeof (int), 1, handle);
 
             name = (char*)calloc (name_length + 1, sizeof (char));
 
@@ -280,7 +279,7 @@ Bundle LoadBundle (const char* filename) {
             TraceLog (LOG_DEBUG, "\t\tSprite Count:   %d", sprite_count);
             TraceLog (LOG_DEBUG, "\t\tAtlas Name:     %s", name);
 
-            fread (&compressed_size, sizeof (int32_t), 1, handle);
+            fread (&compressed_size, sizeof (int), 1, handle);
 
             unsigned char* compressed_data = (unsigned char*)calloc (compressed_size, sizeof (char));
             fread (compressed_data, sizeof (unsigned char), compressed_size, handle);
