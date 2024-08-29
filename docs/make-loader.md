@@ -1,10 +1,10 @@
 # Making a Loader
 
 Building a loader for sprite bundles is a very easy task, all data is written in 4 byte chunks and each section (Atlas, Sprite, Etc) is identified by a simple [FourCC](https://en.wikipedia.org/wiki/FourCC) style code from one of the below...
-`LSPX` - Bundle header, contains basic information for the bundle and should always be first!
-`SPRT` - Sprite, containing all information for a sprite
-`ATLS` - Atlas, containing all information for a sprite
-`BEOF` - Bundle end of file, identifies where the end of file is, should ALWAYS be at the end!
+- `LSPX` - Bundle header, contains basic information for the bundle and should always be first!
+- `SPRT` - Sprite, containing all information for a sprite
+- `ATLS` - Atlas, containing all information for a sprite
+- `BEOF` - Bundle end of file, identifies where the end of file is, should ALWAYS be at the end!
 
 For a more in depth breakdown of the file structure and what order to read data; please see the [bundle structure](/docs/bundle.md) documentation, some simple loaders can also be found in the [loaders](/loaders) directory!
 
