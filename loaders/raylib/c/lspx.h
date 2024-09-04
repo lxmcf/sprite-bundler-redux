@@ -31,7 +31,6 @@ void DrawSprite (int index, Vector2 position, Color color);
 void DrawSpriteEx (int index, Vector2 position, Vector2 scale, float rotation, Color color);
 
 Vector2 GetSpriteOrigin (int index);
-void SetSpriteOrigin (int index, Vector2 origin);
 
 Vector2 GetSpriteSize (int index);
 const char* GetSpriteName (int index);
@@ -123,17 +122,6 @@ Vector2 GetSpriteOrigin (int index) {
     Sprite2D* sprite = &lspx__active_bundle->sprite[index];
 
     return sprite->origin;
-}
-
-void SetSpriteOrigin (int index, Vector2 origin) {
-    if (lspx__active_bundle == NULL)
-        return;
-    if (index == -1 || index > lspx__active_bundle->sprite_count - 1)
-        return;
-
-    Sprite2D* sprite = &lspx__active_bundle->sprite[index];
-
-    sprite->origin = origin;
 }
 
 Vector2 GetSpriteSize (int index) {

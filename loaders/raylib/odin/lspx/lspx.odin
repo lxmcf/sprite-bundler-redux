@@ -178,3 +178,13 @@ DrawSpriteEx :: proc(sprite: string, position: rl.Vector2, scale: rl.Vector2, ro
 
     rl.DrawTexturePro(current_atlas.texture, current_sprite.source, destination, current_sprite.origin * scale, rotation, color)
 }
+
+GetSpriteOrigin :: proc(sprite: string) -> rl.Vector2 {
+    return active_bundle.sprites[sprite].origin
+}
+
+GetSpriteSize :: proc(sprite: string) -> rl.Vector2 {
+    source := active_bundle.sprites[sprite].source
+
+    return {source.width, source.height}
+}
