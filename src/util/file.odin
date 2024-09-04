@@ -7,10 +7,8 @@ FileMode :: enum {
     READ,
 }
 
-File :: os.Handle
-
 // Simplification of os.open based on read/write_entire_file
-OpenFile :: proc(filename: string, mode: FileMode, truncate := true) -> (File, bool) {
+OpenFile :: proc(filename: string, mode: FileMode, truncate := true) -> (os.Handle, bool) {
     file_flags, file_mode: int
 
     switch mode {
@@ -32,93 +30,28 @@ OpenFile :: proc(filename: string, mode: FileMode, truncate := true) -> (File, b
     }
 }
 
-CloseFile :: proc(handle: File) -> bool {
+CloseFile :: proc(handle: os.Handle) -> bool {
     return os.close(handle) == os.ERROR_NONE
 }
 
-@(private)
-GetPadding :: proc(data_length, alignment: int) -> int {
-    return data_length % alignment == 0 ? 0 : alignment - (data_length % alignment) % alignment
+AlignFile :: proc(handle: os.Handle, alignment: i64) -> i64 {
+    position, _ := os.seek(handle, 0, os.SEEK_CUR)
+    offset := position % alignment
+
+    if offset > 0 {
+        result, _ := os.seek(handle, alignment - offset, os.SEEK_CUR)
+        return result
+    } else {
+        return 0
+    }
 }
 
-// TODO: Remove and just have an align function
-// NOTE: Upon re-reading how I have done this... Do not do this
-WriteAligned :: proc(handle: File, data: []byte, alignment: int = 0) -> (int, os.Errno) {
-    padding: int
-    bytes_written, error := os.write(handle, data)
+PadFile :: proc(handle: os.Handle, alignment: i64) {
+    position, _ := os.seek(handle, 0, os.SEEK_CUR)
+    offset := position % alignment
 
-    if alignment > 0 {
-        padding = GetPadding(len(data), alignment)
-
-        if padding > 0 {
-            bytes := make([]byte, padding, context.temp_allocator)
-            os.write(handle, bytes)
-        }
+    if offset > 0 {
+        buffer := make([]byte, alignment - offset, context.temp_allocator)
+        os.write(handle, buffer)
     }
-
-    return bytes_written + padding, error
-}
-
-WriteStringAligned :: proc(handle: File, data: string, alignment: int = 0) -> (int, os.Errno) {
-    padding: int
-    bytes_written, error := os.write_string(handle, data)
-
-    if alignment > 0 {
-        padding = GetPadding(len(data), alignment)
-
-        if padding > 0 {
-            bytes := make([]byte, padding, context.temp_allocator)
-            os.write(handle, bytes)
-        }
-    }
-
-    return bytes_written + padding, error
-}
-
-WritePtrAligned :: proc(handle: File, data: rawptr, length: int, alignment: int = 0) -> (int, os.Errno) {
-    padding: int
-    bytes_written, error := os.write_ptr(handle, data, length)
-
-    if alignment > 0 {
-        padding = GetPadding(length, alignment)
-
-        if padding > 0 {
-            bytes := make([]byte, padding, context.temp_allocator)
-            os.write(handle, bytes)
-        }
-    }
-
-    return bytes_written + padding, error
-}
-
-ReadAligned :: proc(handle: File, data: []byte, alignment: int = 0) -> (int, os.Errno) {
-    padding: int
-    bytes_read, error := os.read(handle, data)
-
-    if alignment > 0 {
-        padding = GetPadding(len(data), alignment)
-
-        if padding > 0 {
-            bytes := make([]byte, padding, context.temp_allocator)
-            os.read(handle, bytes)
-        }
-    }
-
-    return bytes_read + padding, error
-}
-
-ReadPtrAligned :: proc(handle: File, data: rawptr, length: int, alignment: int = 0) -> (int, os.Errno) {
-    padding: int
-    bytes_read, error := os.read_ptr(handle, data, length)
-
-    if alignment > 0 {
-        padding = GetPadding(length, alignment)
-
-        if padding > 0 {
-            bytes := make([]byte, padding, context.temp_allocator)
-            os.read(handle, bytes)
-        }
-    }
-
-    return bytes_read + padding, error
 }

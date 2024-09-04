@@ -21,8 +21,8 @@ int main () {
             current_sprite++;
 
         rotation += GetFrameTime () * 90;
-        const float time = GetTime () * 2;
-        Vector2 scale    = CLITERAL (Vector2){1 + SINE (time), 1 + SINE (time)};
+        float time    = GetTime () * 2;
+        Vector2 scale = CLITERAL (Vector2){1 + SINE (time), 1 + SINE (time)};
 
         BeginDrawing ();
         ClearBackground (RAYWHITE);

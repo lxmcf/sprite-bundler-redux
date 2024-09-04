@@ -1,4 +1,5 @@
 // TODO: Create string pool for sprite names
+// TODO: Potentially move to a basic maps for sprites and atlas'
 
 #ifndef LSPX_H
 #define LSPX_H
