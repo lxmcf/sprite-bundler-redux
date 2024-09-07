@@ -3,6 +3,7 @@ package util
 import "core:path/filepath"
 import "core:strings"
 
+// TODO: Remove in favour for tprint
 CreatePath :: proc(items: []string, allocator := context.allocator) -> string {
     array: [dynamic]string
     defer delete(array)

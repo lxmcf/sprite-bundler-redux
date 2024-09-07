@@ -1,3 +1,4 @@
+// TODO: Move into bundle file, only used there
 package util
 
 import "core:os"
