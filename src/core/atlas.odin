@@ -2,7 +2,6 @@ package core
 
 import "core:strings"
 
-import "bundler:util"
 import rl "vendor:raylib"
 
 Atlas :: struct {
@@ -92,7 +91,9 @@ DeleteAtlas :: proc(project: ^Project, index: int) {
     atlas := project.atlas[index]
 
     for sprite in atlas.sprites {
-        util.DeleteStrings(sprite.name, sprite.file, sprite.atlas)
+        delete(sprite.name)
+        delete(sprite.file)
+        delete(sprite.atlas)
 
         rl.UnloadImage(sprite.image)
 

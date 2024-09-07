@@ -43,7 +43,12 @@ void UnloadBundle (Bundle bundle);
 
 int IsBundleReady (Bundle bundle);
 
+<<<<<<< HEAD:loaders/raylib/c/lspx.h
 #if defined(LSPX_IMPLEMENTATION) || defined(LSPX_IMPL)
+=======
+// #define LSPP_IMPLEMENTATION
+#if defined(LSPP_IMPLEMENTATION) || defined(LSPP_IMPL)
+>>>>>>> 71061ec (Move to stb_rect_pack):loaders/raylib/c/lspp.h
 
 #include <stdio.h>
 #include <stdlib.h>
