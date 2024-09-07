@@ -1,9 +1,10 @@
 package core
 
+import "core:fmt"
 import "core:os"
+import "core:path/filepath"
 import "core:strings"
 
-import "bundler:util"
 import rl "vendor:raylib"
 
 BUNDLE_HEADER :: #config(CUSTOM_BUNDLE_HEADER, "LSPX")
@@ -17,19 +18,52 @@ BUNDLE_BYTE_ALIGNMENT :: 4
 
 BundleError :: enum {
     None,
+    Could_Not_Open,
     Invalid_Alignment,
     No_Sprites,
     No_Atlas,
 }
 
-// TODO: Ignore empty bundles (Causes crashing 100% of the time)
+@(private)
+AlignFile :: proc(handle: os.Handle, alignment: i64) -> i64 {
+    position, _ := os.seek(handle, 0, os.SEEK_CUR)
+    offset := position % alignment
+
+    if offset > 0 {
+        result, _ := os.seek(handle, alignment - offset, os.SEEK_CUR)
+        return result
+    } else {
+        return 0
+    }
+}
+
+@(private)
+PadFile :: proc(handle: os.Handle, alignment: i64) {
+    position, _ := os.seek(handle, 0, os.SEEK_CUR)
+    offset := position % alignment
+
+    if offset > 0 {
+        buffer := make([]byte, alignment - offset, context.temp_allocator)
+        os.write(handle, buffer)
+    }
+}
+
 ExportBundle :: proc(project: Project) -> BundleError {
-    export_directory := util.CreatePath({project.directory, "export"}, context.temp_allocator)
+    export_directory := fmt.tprint(project.directory, "export", sep = filepath.SEPARATOR_STRING)
+    handle_file := fmt.tprint(export_directory, BUNDLE_FILE, sep = filepath.SEPARATOR_STRING)
+
     os.make_directory(export_directory)
 
-    handle_file := util.CreatePath({export_directory, BUNDLE_FILE}, context.temp_allocator)
-    handle, _ := util.OpenFile(handle_file, .WRITE)
-    defer util.CloseFile(handle)
+    when ODIN_OS == .Linux || ODIN_OS == .Darwin {
+        file_mode := os.S_IRUSR | os.S_IWUSR | os.S_IRGRP | os.S_IROTH
+    } else {
+        file_mode: int
+    }
+
+    handle, err := os.open(handle_file, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, file_mode)
+    if err != os.ERROR_NONE do return .Could_Not_Open
+
+    defer os.close(handle)
 
     project_sprite_count: int
     for atlas in project.atlas do project_sprite_count += len(atlas.sprites)
@@ -73,14 +107,14 @@ ExportBundle :: proc(project: Project) -> BundleError {
         os.write_ptr(handle, &sprite_count, size_of(i32))
         os.write_ptr(handle, &name_length, size_of(i32))
         os.write_string(handle, atlas.name)
-        util.PadFile(handle, BUNDLE_BYTE_ALIGNMENT)
+        PadFile(handle, BUNDLE_BYTE_ALIGNMENT)
 
         // ATLAS DATA -> Layout
         // [4 BYTES] Data size
         // [^ BYTES]
         os.write_ptr(handle, &compressed_data_size, size_of(i32))
         os.write_ptr(handle, compressed_data, int(compressed_data_size))
-        util.PadFile(handle, BUNDLE_BYTE_ALIGNMENT)
+        PadFile(handle, BUNDLE_BYTE_ALIGNMENT)
     }
 
     // SPRITES
@@ -111,11 +145,12 @@ ExportBundle :: proc(project: Project) -> BundleError {
             os.write_ptr(handle, &frame_speed, size_of(f32))
             os.write_ptr(handle, &atlas_name_length, size_of(i32))
             os.write_string(handle, sprite.atlas)
-            util.PadFile(handle, BUNDLE_BYTE_ALIGNMENT)
+            PadFile(handle, BUNDLE_BYTE_ALIGNMENT)
+
             os.write_ptr(handle, &atlas_index, size_of(i32))
             os.write_ptr(handle, &name_length, size_of(i32))
             os.write_string(handle, sprite.name)
-            util.PadFile(handle, BUNDLE_BYTE_ALIGNMENT)
+            PadFile(handle, BUNDLE_BYTE_ALIGNMENT)
 
             // SOURCE DATA -> Layout
             // [4 BYTES] X
@@ -153,8 +188,8 @@ ExportBundle :: proc(project: Project) -> BundleError {
 }
 
 ImportBundle :: proc(filename: string) -> BundleError {
-    handle, _ := util.OpenFile(filename, .READ)
-    defer util.CloseFile(handle)
+    handle, _ := os.open(filename, os.O_RDONLY, 0)
+    defer os.close(handle)
 
     file_size := os.file_size_from_path(filename)
     if file_size % BUNDLE_BYTE_ALIGNMENT != 0 do return .Invalid_Alignment
@@ -193,7 +228,7 @@ ImportBundle :: proc(filename: string) -> BundleError {
 
             atlas_name := make([]byte, name_length, context.temp_allocator)
             os.read(handle, atlas_name)
-            util.AlignFile(handle, BUNDLE_BYTE_ALIGNMENT)
+            AlignFile(handle, BUNDLE_BYTE_ALIGNMENT)
 
             os.read_ptr(handle, &compressed_data_size, size_of(i32))
             compressed_data := make([]byte, compressed_data_size, context.temp_allocator)
@@ -203,7 +238,7 @@ ImportBundle :: proc(filename: string) -> BundleError {
             rl.TraceLog(.DEBUG, "\t\tData size:        %d", compressed_data_size)
 
             os.read(handle, compressed_data)
-            util.AlignFile(handle, BUNDLE_BYTE_ALIGNMENT)
+            AlignFile(handle, BUNDLE_BYTE_ALIGNMENT)
 
             decompressed_data := rl.DecompressData(raw_data(compressed_data), compressed_data_size, &decompressed_data_size)
             defer rl.MemFree(decompressed_data)
@@ -228,14 +263,14 @@ ImportBundle :: proc(filename: string) -> BundleError {
 
             atlas_name := make([]byte, atlas_name_length, context.temp_allocator)
             os.read(handle, atlas_name)
-            util.AlignFile(handle, BUNDLE_BYTE_ALIGNMENT)
+            AlignFile(handle, BUNDLE_BYTE_ALIGNMENT)
 
             os.read_ptr(handle, &atlas_index, size_of(i32))
             os.read_ptr(handle, &name_length, size_of(i32))
 
             sprite_name := make([]byte, name_length, context.temp_allocator)
             os.read(handle, sprite_name)
-            util.AlignFile(handle, BUNDLE_BYTE_ALIGNMENT)
+            AlignFile(handle, BUNDLE_BYTE_ALIGNMENT)
 
             rl.TraceLog(.DEBUG, "\t\tFrame count:     %d", frame_count)
             rl.TraceLog(.DEBUG, "\t\tFrame speed:     %f", frame_speed)

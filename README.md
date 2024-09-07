@@ -99,7 +99,7 @@ You can find some basic loaders in the [loaders](/loaders) directory, alternativ
 I do use compression on the texture atlas data ([Small Deflate](https://github.com/fxfactorial/sdefl)), it is not perfect and only basic, however the bundle will also store some arbitrary [FourCC style](https://en.wikipedia.org/wiki/FourCC) codes to easily identify where an atlas or sprite are in the exported bundle. Data to identify the position of the sprite in the atlas, it's origin point and animation frames are also stored.
 
 #### Q) How efficient is the texture packing?
-Not very... I am using a custom 'algorithm' if you can even call it that called 'MassWidthSort' however would love to move over to using [stb rect pack](https://github.com/nothings/stb) as it is even bundled with Odin's vendor libraries and is 1000% going to be better in every way.
+Very! I have not bench marked anything but I am using [stb rect pack](https://github.com/nothings/stb) which is infinitely more robust than my initial 'MassWidthSort' method...
 
 #### Q) Are the new sour skittles better than the old ones?
 No :slightly_smiling_face:

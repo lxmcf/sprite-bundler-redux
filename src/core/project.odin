@@ -11,10 +11,7 @@ import rl "vendor:raylib"
 DEFAULT_PROJECT_DIRECTORY :: #config(CUSTOM_PROJECT_DIRECTORY, "projects")
 DEFAULT_PROJECT_FILENAME :: #config(CUSTOM_PROJECT_FILENAME, "project.lspp")
 DEFAULT_PROJECT_ASSETS :: #config(CUSTOM_ASSET_DIRECTORY, "assets")
-DEFAULT_PROJECT_SCHEMA :: #config(
-    CUSTOM_PROJECT_SCHEMA,
-    "https://raw.githubusercontent.com/lxmcf/sprite-bundler-redux/main/data/lspp.scheme.json",
-)
+DEFAULT_PROJECT_SCHEMA :: #config(CUSTOM_PROJECT_SCHEMA, "https://raw.githubusercontent.com/lxmcf/sprite-bundler-redux/main/data/lspp.scheme.json")
 
 DEFAULT_ATLAS_NAME :: "atlas"
 CURRENT_PROJECT_VERSION :: 100
@@ -65,12 +62,7 @@ ProjectToWriteable :: proc(project: Project) -> WriteableProject {
     writable: WriteableProject = {
         version = project.version,
         name = project.name,
-        config = {
-            assets_dir = project.config.assets_dir,
-            copy_files = project.config.copy_files,
-            auto_center = project.config.auto_center,
-            atlas_size = project.config.atlas_size,
-        },
+        config = {assets_dir = project.config.assets_dir, copy_files = project.config.copy_files, auto_center = project.config.auto_center, atlas_size = project.config.atlas_size},
     }
 
     for atlas in project.atlas {
@@ -82,29 +74,18 @@ ProjectToWriteable :: proc(project: Project) -> WriteableProject {
 
 @(private)
 ProjectToReadable :: proc(project: WriteableProject) -> Project {
-    dir, file, _ := GetProjectFilenames(project.name, allocator = context.temp_allocator)
+    dir := fmt.tprint(DEFAULT_PROJECT_DIRECTORY, project.name, sep = filepath.SEPARATOR_STRING)
+    file := fmt.tprint(dir, DEFAULT_PROJECT_FILENAME, sep = filepath.SEPARATOR_STRING)
 
     readable: Project = {
         version = project.version,
         name = strings.clone(project.name),
         file = strings.clone(file),
         directory = strings.clone(dir),
-        config = {
-            assets_dir = strings.clone(project.config.assets_dir),
-            copy_files = project.config.copy_files,
-            auto_center = project.config.auto_center,
-            atlas_size = project.config.atlas_size,
-        },
+        config = {assets_dir = strings.clone(project.config.assets_dir), copy_files = project.config.copy_files, auto_center = project.config.auto_center, atlas_size = project.config.atlas_size},
     }
 
-    background_image := rl.GenImageChecked(
-        i32(readable.config.atlas_size),
-        i32(readable.config.atlas_size),
-        i32(readable.config.atlas_size) / 32,
-        i32(readable.config.atlas_size) / 32,
-        rl.LIGHTGRAY,
-        rl.GRAY,
-    )
+    background_image := rl.GenImageChecked(i32(readable.config.atlas_size), i32(readable.config.atlas_size), i32(readable.config.atlas_size) / 32, i32(readable.config.atlas_size) / 32, rl.LIGHTGRAY, rl.GRAY)
     defer rl.UnloadImage(background_image)
 
     readable.background = rl.LoadTextureFromImage(background_image)
@@ -124,7 +105,9 @@ UnloadWriteableProject :: proc(project: ^WriteableProject) {
 }
 
 CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center: bool) -> ProjectError {
-    project_directory, project_file, project_assets := GetProjectFilenames(name, context.temp_allocator)
+    project_directory := fmt.tprint(DEFAULT_PROJECT_DIRECTORY, name, sep = filepath.SEPARATOR_STRING)
+    project_file := fmt.tprint(project_directory, DEFAULT_PROJECT_FILENAME, sep = filepath.SEPARATOR_STRING)
+    project_assets := fmt.tprint(project_directory, DEFAULT_PROJECT_ASSETS, sep = filepath.SEPARATOR_STRING)
 
     os.make_directory(project_directory)
     os.make_directory(project_assets)
@@ -134,12 +117,7 @@ CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center:
         version = CURRENT_PROJECT_VERSION,
         name = name,
         file = project_file,
-        config = {
-            assets_dir = strings.concatenate({project_assets, filepath.SEPARATOR_STRING}, context.temp_allocator),
-            copy_files = copy_files,
-            auto_center = auto_center,
-            atlas_size = atlas_size,
-        },
+        config = {assets_dir = strings.concatenate({project_assets, filepath.SEPARATOR_STRING}, context.temp_allocator), copy_files = copy_files, auto_center = auto_center, atlas_size = atlas_size},
     }
 
     atlas_to_create: Atlas = {
@@ -162,11 +140,7 @@ LoadProject :: proc(filename: string) -> (Project, ProjectError) {
         new_project = ToReadable(loaded_project)
 
         for &atlas in new_project.atlas {
-            atlas.image = rl.GenImageColor(
-                i32(new_project.config.atlas_size),
-                i32(new_project.config.atlas_size),
-                rl.BLANK,
-            )
+            atlas.image = rl.GenImageColor(i32(new_project.config.atlas_size), i32(new_project.config.atlas_size), rl.BLANK)
 
             GenerateAtlas(&atlas)
         }

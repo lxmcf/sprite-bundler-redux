@@ -7,7 +7,6 @@ import "core:path/filepath"
 import "core:strings"
 
 import "bundler:core"
-import "bundler:util"
 
 import mu "vendor:microui"
 import rl "vendor:raylib"
@@ -76,12 +75,7 @@ UpdateProjectPicker :: proc(project: ^core.Project) {
     ctx := core.Begin()
     defer core.End()
 
-    rect: mu.Rect = {
-        (rl.GetScreenWidth() / 2) - (WINDOW_WIDTH / 2),
-        (rl.GetScreenHeight() / 2) - (WINDOW_HEIGHT / 2),
-        WINDOW_WIDTH,
-        WINDOW_HEIGHT,
-    }
+    rect: mu.Rect = {(rl.GetScreenWidth() / 2) - (WINDOW_WIDTH / 2), (rl.GetScreenHeight() / 2) - (WINDOW_HEIGHT / 2), WINDOW_WIDTH, WINDOW_HEIGHT}
 
     // NOTE: This is awful, maybe I should just remake raygui?
     if mu.window(ctx, "Projects", rect, {.NO_RESIZE, .NO_CLOSE}) {
@@ -148,10 +142,7 @@ UpdateProjectPicker :: proc(project: ^core.Project) {
             err := core.CreateNewProject(project_name, int(atlas_size), copy_files, auto_center)
 
             if err == .None {
-                project_file_path := util.CreatePath(
-                    {"projects", project_name, "project.lspp"},
-                    context.temp_allocator,
-                )
+                project_file_path := fmt.tprint("projects", project_name, "project.lspp", sep = filepath.SEPARATOR_STRING)
 
                 if os.is_file(project_file_path) {
                     project^, err = core.LoadProject(project_file_path)
