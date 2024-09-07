@@ -8,8 +8,6 @@ import "core:strings"
 
 import rl "vendor:raylib"
 
-import "bundler:util"
-
 DEFAULT_PROJECT_DIRECTORY :: #config(CUSTOM_PROJECT_DIRECTORY, "projects")
 DEFAULT_PROJECT_FILENAME :: #config(CUSTOM_PROJECT_FILENAME, "project.lspp")
 DEFAULT_PROJECT_ASSETS :: #config(CUSTOM_ASSET_DIRECTORY, "assets")
@@ -184,7 +182,10 @@ LoadProject :: proc(filename: string) -> (Project, ProjectError) {
 }
 
 UnloadProject :: proc(project: ^Project) {
-    util.DeleteStrings(project.name, project.file, project.directory, project.config.assets_dir)
+    delete(project.name)
+    delete(project.file)
+    delete(project.directory)
+    delete(project.config.assets_dir)
 
     for atlas, atlas_index in project.atlas {
         rl.TraceLog(.DEBUG, "[DELETE] Deleting atlas[%d] %s", atlas_index, atlas.name)
@@ -193,7 +194,9 @@ UnloadProject :: proc(project: ^Project) {
 
         for sprite, sprite_index in atlas.sprites {
             rl.TraceLog(.DEBUG, "[DELETE] Deleting sprite[%d] %s", sprite_index, sprite.name)
-            util.DeleteStrings(sprite.name, sprite.file, sprite.atlas)
+            delete(sprite.name)
+            delete(sprite.file)
+            delete(sprite.atlas)
 
             rl.UnloadImage(sprite.image)
         }

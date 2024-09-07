@@ -5,14 +5,13 @@ import "core:crypto"
 import "core:encoding/uuid"
 import "core:math"
 import "core:os"
-import "core:slice"
 import "core:strings"
 
 import mu "vendor:microui"
 import rl "vendor:raylib"
+import stb "vendor:stb/rect_pack"
 
 import "bundler:core"
-import "bundler:util"
 
 @(private = "file")
 EditorState :: struct {
@@ -266,69 +265,37 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 }
 
 @(private = "file")
-MassWidthSort :: proc(a, b: core.Sprite) -> bool {
-    mass_a := a.source.width * a.source.height
-    mass_b := b.source.width * b.source.height
-
-    if mass_a == mass_b {
-        if a.source.width < b.source.width do return false
-        if a.source.width > b.source.width do return true
-
-        if a.source.height < b.source.height do return false
-        if a.source.height > b.source.height do return true
-
-        return false
-    }
-
-    return mass_a > mass_b
-}
-
-@(private = "file")
 PackSprites :: proc(project: ^core.Project) {
-    slice.stable_sort_by(state.current_atlas.sprites[:], MassWidthSort)
+    atlas_size := i32(project.config.atlas_size)
 
-    valignment, texture_placed := f32(project.config.atlas_size), 0
+    stb_context: stb.Context
+    stb_nodes := make([]stb.Node, atlas_size, context.temp_allocator)
+    stb_rects: [dynamic]stb.Rect
+    defer delete(stb_rects)
 
-    for sprite in state.current_atlas.sprites {
-        if sprite.source.height < valignment do valignment = sprite.source.height
+    stb.init_target(&stb_context, atlas_size, atlas_size, raw_data(stb_nodes[:]), atlas_size)
+
+    for sprite, index in state.current_atlas.sprites {
+        append(
+            &stb_rects,
+            stb.Rect{id = i32(index), w = stb.Coord(sprite.image.width), h = stb.Coord(sprite.image.height)},
+        )
     }
 
-    // NOTE: I have no idea why I need a pointer... From a pointer... It doesn't sort correctly otherwise
-    for &sprite, index in state.current_atlas.sprites {
-        current_rectangle := &sprite.source
+    pack_result := stb.pack_rects(&stb_context, raw_data(stb_rects), i32(len(stb_rects)))
 
-        for j := 0; j < texture_placed; j += 1 {
-            for rl.CheckCollisionRecs(current_rectangle^, state.current_atlas.sprites[j].source) {
-                current_rectangle.x += state.current_atlas.sprites[j].source.width
+    if pack_result == 1 {
+        rl.TraceLog(.ERROR, "[PACK] Did not pack all sprites!")
+    }
 
-                within_x := int(current_rectangle.x + current_rectangle.width) <= project.config.atlas_size
-
-                if !within_x {
-                    current_rectangle.x = 0
-                    current_rectangle.y += valignment
-
-                    j = 0
-                }
-            }
+    for rect in stb_rects {
+        if !rect.was_packed {
+            // TODO: Cleanup
+            continue
         }
 
-        within_y := int(current_rectangle.y + current_rectangle.height) <= project.config.atlas_size
-        if !within_y {
-            rl.TraceLog(.DEBUG, "[DELETE] Deleting sprite[%d] %s", index, sprite.name)
-
-            if project.config.copy_files {
-                error := os.remove(sprite.file)
-
-                rl.TraceLog(.DEBUG, "[DELETE] Delete error ID [%d]", error)
-            }
-
-            util.DeleteStrings(sprite.name, sprite.file, sprite.atlas)
-
-            rl.UnloadImage(sprite.image)
-            ordered_remove(&state.current_atlas.sprites, index)
-        } else {
-            texture_placed += 1
-        }
+        state.current_atlas.sprites[rect.id].source.x = f32(rect.x)
+        state.current_atlas.sprites[rect.id].source.y = f32(rect.y)
     }
 }
 

@@ -65,7 +65,8 @@ InitProjectPicker :: proc() {
 
 UnloadProjectPicker :: proc() {
     for project in state.projects {
-        util.DeleteStrings(project.name, project.file)
+        delete(project.name)
+        delete(project.file)
     }
 
     delete(state.projects)

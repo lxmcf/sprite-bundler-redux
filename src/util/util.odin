@@ -15,7 +15,3 @@ CreatePath :: proc(items: []string, allocator := context.allocator) -> string {
 
     return strings.concatenate(array[:], allocator)
 }
-
-DeleteStrings :: proc(items: ..string) {
-    for item in items do delete(item)
-}
