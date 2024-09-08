@@ -222,17 +222,11 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 
                 if project.config.copy_files {
                     id := uuid.generate_v7_basic()
-                    filename := strings.concatenate(
-                        {project.config.assets_dir, uuid.to_string(id, context.temp_allocator), ".png"},
-                        context.temp_allocator,
-                    )
+                    filename := strings.concatenate({project.config.assets_dir, uuid.to_string(id, context.temp_allocator), ".png"}, context.temp_allocator)
 
                     for os.is_file(filename) {
                         id = uuid.generate_v7_basic()
-                        filename = strings.concatenate(
-                            {project.config.assets_dir, uuid.to_string(id, context.temp_allocator), ".png"},
-                            context.temp_allocator,
-                        )
+                        filename = strings.concatenate({project.config.assets_dir, uuid.to_string(id, context.temp_allocator), ".png"}, context.temp_allocator)
                     }
 
                     path = strings.clone_to_cstring(filename, context.temp_allocator)
@@ -276,10 +270,7 @@ PackSprites :: proc(project: ^core.Project) {
     stb.init_target(&stb_context, atlas_size, atlas_size, raw_data(stb_nodes[:]), atlas_size)
 
     for sprite, index in state.current_atlas.sprites {
-        append(
-            &stb_rects,
-            stb.Rect{id = i32(index), w = stb.Coord(sprite.image.width), h = stb.Coord(sprite.image.height)},
-        )
+        append(&stb_rects, stb.Rect{id = i32(index), w = stb.Coord(sprite.image.width), h = stb.Coord(sprite.image.height)})
     }
 
     pack_result := stb.pack_rects(&stb_context, raw_data(stb_rects), i32(len(stb_rects)))
@@ -319,44 +310,35 @@ DrawMainEditor :: proc(project: ^core.Project) {
 
 @(private = "file")
 DrawEditorGui :: proc(project: ^core.Project) {
-    rl.DrawTextEx(
-        rl.GetFontDefault(),
-        strings.clone_to_cstring(state.current_atlas.name, context.temp_allocator),
-        rl.GetWorldToScreen2D({}, state.camera) + {0, -48},
-        40,
-        1,
-        rl.WHITE,
-    )
+    rl.DrawTextEx(rl.GetFontDefault(), strings.clone_to_cstring(state.current_atlas.name, context.temp_allocator), rl.GetWorldToScreen2D({}, state.camera) + {0, -48}, 40, 1, rl.WHITE)
 
     if state.selected_sprite != nil {
         position: rl.Vector2 = {state.selected_sprite.source.x, state.selected_sprite.source.y}
         adjusted_position: rl.Vector2 = rl.GetWorldToScreen2D(position, state.camera)
 
-        scaled_rect_size: rl.Vector2 =
-            {state.selected_sprite.source.width, state.selected_sprite.source.height} * state.camera.zoom
+        scaled_rect_size: rl.Vector2 = {state.selected_sprite.source.width, state.selected_sprite.source.height} * state.camera.zoom
 
-        rl.DrawRectangleLinesEx(
-            {adjusted_position.x, adjusted_position.y, scaled_rect_size.x, scaled_rect_size.y},
-            1,
-            rl.RED,
-        )
+        rl.DrawRectangleLinesEx({adjusted_position.x, adjusted_position.y, scaled_rect_size.x, scaled_rect_size.y}, 1, rl.RED)
 
         position_origin := rl.GetWorldToScreen2D(position + state.selected_sprite.origin, state.camera)
         rl.DrawCircleLinesV(position_origin, 4, rl.RED)
 
         if !rl.Vector2Equals(state.selected_sprite.origin, {}) || state.should_edit_origin {
-            rl.DrawLineV(
-                {adjusted_position.x, position_origin.y},
-                {adjusted_position.x + scaled_rect_size.x, position_origin.y},
-                rl.Fade(rl.RED, 0.5),
-            )
+            rl.DrawLineV({adjusted_position.x, position_origin.y}, {adjusted_position.x + scaled_rect_size.x, position_origin.y}, rl.Fade(rl.RED, 0.5))
 
-            rl.DrawLineV(
-                {position_origin.x, adjusted_position.y},
-                {position_origin.x, adjusted_position.y + scaled_rect_size.y},
-                rl.Fade(rl.RED, 0.5),
-            )
+            rl.DrawLineV({position_origin.x, adjusted_position.y}, {position_origin.x, adjusted_position.y + scaled_rect_size.y}, rl.Fade(rl.RED, 0.5))
         }
+
+        sprite_name := strings.clone_to_cstring(state.selected_sprite.name, context.temp_allocator)
+
+        position += {0, state.selected_sprite.source.height}
+        text_position := rl.GetWorldToScreen2D(position, state.camera)
+        text_size := rl.MeasureTextEx(rl.GetFontDefault(), sprite_name, 30, 1) + 4
+
+        text_size.x = max(text_size.x, state.selected_sprite.source.width * state.camera.zoom)
+
+        rl.DrawRectangleV(text_position, text_size, rl.Fade(rl.BLACK, 0.5))
+        rl.DrawTextEx(rl.GetFontDefault(), sprite_name, text_position + 2, 30, 1, rl.WHITE)
     }
 
     ctx := core.Begin()
