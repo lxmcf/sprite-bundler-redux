@@ -30,7 +30,7 @@ Atlas[]
     Name Length         (4 Bytes) // Length of atlas name
     Name                (^ Bytes) // Name of atlas (Appended with 0-3 bytes of padding)
     Data Size           (4 Bytes) // Length of stored atlas data
-    Data                (^ Bytes) // Deflated PNG data
+    Data                (^ Bytes) // Raw PNG data
 }
 
 Sprite[]
@@ -66,6 +66,3 @@ Sprite[]
 EOF
     FourCC ID       (4 Bytes) //BEOF
 ```
-
-> [!IMPORTANT]
-> Currently atlas PNG data is deflated using [sdefl](https://github.com/fxfactorial/sdefl) so this data will need to be decompressed using [sinfl](https://github.com/fxfactorial/sdefl) or any alternate unless bundle specifically indicates it does not use compression!

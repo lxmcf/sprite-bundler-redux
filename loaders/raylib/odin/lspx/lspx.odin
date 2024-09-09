@@ -70,7 +70,7 @@ LoadBundle :: proc(filename: string) -> (Bundle, bool) {
 
         if strings.compare(string(chunk), CHUNK_ATLAS) == 0 {
             atlas: Atlas
-            name_length, decompressed_size, compressed_size: i32
+            name_length, atlas_data_size: i32
 
             os.read_ptr(handle, &atlas.sprite_count, size_of(i32))
             os.read_ptr(handle, &name_length, size_of(i32))
@@ -79,16 +79,13 @@ LoadBundle :: proc(filename: string) -> (Bundle, bool) {
             os.read(handle, name)
             AlignBytes(handle)
 
-            os.read_ptr(handle, &compressed_size, size_of(i32))
-            compressed_data := make([]byte, compressed_size, context.temp_allocator)
+            os.read_ptr(handle, &atlas_data_size, size_of(i32))
+            atlas_data := make([]byte, atlas_data_size, context.temp_allocator)
 
-            os.read(handle, compressed_data)
+            os.read(handle, atlas_data)
             AlignBytes(handle)
 
-            decompressed_data := rl.DecompressData(raw_data(compressed_data), compressed_size, &decompressed_size)
-            defer rl.MemFree(decompressed_data)
-
-            image := rl.LoadImageFromMemory(".png", decompressed_data, decompressed_size)
+            image := rl.LoadImageFromMemory(".png", raw_data(atlas_data), atlas_data_size)
             defer rl.UnloadImage(image)
 
             atlas.texture = rl.LoadTextureFromImage(image)

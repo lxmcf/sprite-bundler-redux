@@ -93,12 +93,9 @@ ExportBundle :: proc(project: Project) -> BundleError {
         name_length := i32(len(atlas.name))
         sprite_count := i32(len(atlas.sprites))
 
-        raw_data_size, compressed_data_size: i32
+        raw_data_size: i32
         raw_data := rl.ExportImageToMemory(atlas.image, ".png", &raw_data_size)
         defer rl.MemFree(raw_data)
-
-        compressed_data := rl.CompressData(raw_data, raw_data_size, &compressed_data_size)
-        defer rl.MemFree(compressed_data)
 
         // ATLAS INFO -> Layout
         // [4 BYTES] Sprite count
@@ -112,8 +109,8 @@ ExportBundle :: proc(project: Project) -> BundleError {
         // ATLAS DATA -> Layout
         // [4 BYTES] Data size
         // [^ BYTES]
-        os.write_ptr(handle, &compressed_data_size, size_of(i32))
-        os.write_ptr(handle, compressed_data, int(compressed_data_size))
+        os.write_ptr(handle, &raw_data_size, size_of(i32))
+        os.write_ptr(handle, raw_data, int(raw_data_size))
         PadFile(handle, BUNDLE_BYTE_ALIGNMENT)
     }
 
@@ -222,7 +219,7 @@ ImportBundle :: proc(filename: string) -> BundleError {
             current_position, _ := os.seek(handle, 0, os.SEEK_CUR)
             rl.TraceLog(.DEBUG, "---> Found atlas at chunk[%d]", current_position / BUNDLE_BYTE_ALIGNMENT)
 
-            name_length, decompressed_data_size, compressed_data_size, sprite_count: i32
+            name_length, data_size, sprite_count: i32
             os.read_ptr(handle, &sprite_count, size_of(i32))
             os.read_ptr(handle, &name_length, size_of(i32))
 
@@ -230,22 +227,19 @@ ImportBundle :: proc(filename: string) -> BundleError {
             os.read(handle, atlas_name)
             AlignFile(handle, BUNDLE_BYTE_ALIGNMENT)
 
-            os.read_ptr(handle, &compressed_data_size, size_of(i32))
-            compressed_data := make([]byte, compressed_data_size, context.temp_allocator)
+            os.read_ptr(handle, &data_size, size_of(i32))
+            data := make([]byte, data_size, context.temp_allocator)
 
             rl.TraceLog(.DEBUG, "\t\tSprite count:     %d", sprite_count)
             rl.TraceLog(.DEBUG, "\t\tAtlas name:       %s", atlas_name)
-            rl.TraceLog(.DEBUG, "\t\tData size:        %d", compressed_data_size)
+            rl.TraceLog(.DEBUG, "\t\tData size:        %d", data_size)
 
-            os.read(handle, compressed_data)
+            os.read(handle, data)
             AlignFile(handle, BUNDLE_BYTE_ALIGNMENT)
-
-            decompressed_data := rl.DecompressData(raw_data(compressed_data), compressed_data_size, &decompressed_data_size)
-            defer rl.MemFree(decompressed_data)
 
             // TEMP
             export_filename := strings.concatenate({string(atlas_name), ".png"}, context.temp_allocator)
-            os.write_entire_file(export_filename, decompressed_data[:decompressed_data_size])
+            os.write_entire_file(export_filename, data[:data_size])
 
             continue
         }

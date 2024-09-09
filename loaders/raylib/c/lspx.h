@@ -253,7 +253,7 @@ Bundle LoadBundle (const char* filename) {
         if (strncmp (header_buffer, LSPX__ATLAS_HEADER, 4) == 0) {
             TraceLog (LOG_DEBUG, "--> Found atlas at chunk[%d]", ftell (handle) / LSPX__BUNDLE_ALIGNMENT);
 
-            int sprite_count, name_length, compressed_size, decompressed_size;
+            int sprite_count, name_length, atlas_data_size;
             char* name;
 
             fread (&sprite_count, sizeof (int), 1, handle);
@@ -268,21 +268,18 @@ Bundle LoadBundle (const char* filename) {
             TraceLog (LOG_DEBUG, "\t\tSprite Count:   %d", sprite_count);
             TraceLog (LOG_DEBUG, "\t\tAtlas Name:     %s", name);
 
-            fread (&compressed_size, sizeof (int), 1, handle);
+            fread (&atlas_data_size, sizeof (int), 1, handle);
 
-            unsigned char* compressed_data = (unsigned char*)calloc (compressed_size, sizeof (char));
-            fread (compressed_data, sizeof (unsigned char), compressed_size, handle);
+            unsigned char* atlas_data = (unsigned char*)calloc (atlas_data_size, sizeof (char));
+            fread (atlas_data, sizeof (unsigned char), atlas_data_size, handle);
             falign (handle, LSPX__BUNDLE_ALIGNMENT);
 
-            unsigned char* decompressed_data = DecompressData (compressed_data, compressed_size, &decompressed_size);
-
-            Image image                = LoadImageFromMemory (".png", decompressed_data, decompressed_size);
+            Image image                = LoadImageFromMemory (".png", atlas_data, atlas_data_size);
             bundle.atlas[atlas_loaded] = LoadTextureFromImage (image);
 
             UnloadImage (image);
 
-            free (compressed_data);
-            free (decompressed_data);
+            free (atlas_data);
             free (name);
 
             atlas_loaded++;
