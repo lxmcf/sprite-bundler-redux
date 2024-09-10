@@ -51,12 +51,7 @@ SpriteToReadable :: proc(sprite: WriteableSprite) -> Sprite {
         name = strings.clone(sprite.name),
         file = strings.clone(sprite.file),
         atlas = strings.clone(sprite.atlas),
-        source = {
-            x = sprite.source.x,
-            y = sprite.source.y,
-            width = sprite.source.width,
-            height = sprite.source.height,
-        },
+        source = {x = sprite.source.x, y = sprite.source.y, width = sprite.source.width, height = sprite.source.height},
         origin = {sprite.origin.x, sprite.origin.y},
     }
 
@@ -73,3 +68,17 @@ SpriteToReadable :: proc(sprite: WriteableSprite) -> Sprite {
 
 @(private)
 UnloadWriteableSprite :: proc(sprite: ^WriteableSprite) {}
+
+DeleteSprite :: proc(project: ^Project, sprite: ^Sprite) {
+    if project.config.copy_files {
+        os.remove(sprite.file)
+    }
+
+    delete(sprite.name)
+    delete(sprite.file)
+    delete(sprite.atlas)
+
+    rl.UnloadImage(sprite.image)
+
+    delete(sprite.animation.frames)
+}

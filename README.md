@@ -61,6 +61,7 @@ odin build src/ -out:application.exe -collection:bundler=src -vet -min-link-libs
     - Press `V` to start editing the sprite origin and `LEFT CLICK` to set
     - Press `Z` to center the origin of the selected sprite
     - Press `CTRL + R` to rename the selected sprite
+    - Press `CTRL + Y` to deete the selected sprite
 
 - Add files to currently open atlas
     - Drop desired files over window, sprites will be sorted and packed automatically
@@ -96,7 +97,7 @@ You can find some basic loaders in the [loaders](/loaders) directory, alternativ
 - lspp - Lxmcf Sprite Packer Program - The main application
 
 #### Q) Why is the bundle file size larger than the raw images?
-I did use compression on the texture atlas data ([PNG Data](http://www.libpng.org/pub/png/)) however this was removed due to instability hence a large file size, however the bundle will also store some arbitrary [FourCC style](https://en.wikipedia.org/wiki/FourCC) codes to easily identify where an atlas or sprite are in the exported bundle. Data to identify the position of the sprite in the atlas, it's origin point and animation frames are also stored.
+I did use compression on the texture atlas data ([PNG Data](http://www.libpng.org/pub/png/)) however this was removed due to instability hence a large file size, however the bundle will also store some arbitrary [FourCC style](https://en.wikipedia.org/wiki/FourCC) codes to easily identify where an atlas or sprite are in the exported bundle. Data to identify the position of the sprite in the atlas, it's origin point and animation frames are also stored, you can view the [bundle structure](/docs/bundle.md) for more info.
 
 #### Q) How efficient is the texture packing?
 Very! I have not bench marked anything but I am using [stb rect pack](https://github.com/nothings/stb) which is infinitely more robust than my initial 'MassWidthSort' method...

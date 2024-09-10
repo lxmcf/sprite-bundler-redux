@@ -15,27 +15,29 @@ import "bundler:core"
 
 @(private = "file")
 EditorState :: struct {
-    camera:               rl.Camera2D,
-    cursor:               rl.MouseCursor,
+    camera:                rl.Camera2D,
+    cursor:                rl.MouseCursor,
 
     // Selected elements
-    current_atlas_index:  int,
-    current_atlas:        ^core.Atlas,
-    selected_sprite:      ^core.Sprite,
+    current_atlas_index:   int,
+    current_atlas:         ^core.Atlas,
+    selected_sprite:       ^core.Sprite,
+    selected_sprite_index: int,
 
     // Buffers
-    is_dialog_open:       bool,
-    is_atlas_rename:      bool,
-    is_sprite_rename:     bool,
+    is_dialog_open:        bool,
+    is_atlas_rename:       bool,
+    is_sprite_rename:      bool,
 
     // Editors
-    should_edit_origin:   bool,
+    should_edit_origin:    bool,
 
     // UI controls
-    save_project:         bool,
-    export_project:       bool,
-    create_new_atlas:     bool,
-    delete_current_atlas: bool,
+    save_project:          bool,
+    export_project:        bool,
+    create_new_atlas:      bool,
+    delete_current_atlas:  bool,
+    delete_current_sprite: bool,
 }
 
 @(private = "file")
@@ -49,6 +51,7 @@ InitEditor :: proc(project: ^core.Project) {
 
     state.current_atlas = &project.atlas[0]
     state.selected_sprite = nil
+    state.selected_sprite_index = -1
 }
 
 UnloadEditor :: proc() {}
@@ -71,12 +74,13 @@ UpdateEditor :: proc(project: ^core.Project) {
     }
 
     mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
-    for &sprite in state.current_atlas.sprites {
+    for &sprite, index in state.current_atlas.sprites {
         if rl.CheckCollisionPointRec(mouse_position, sprite.source) {
             state.cursor = .POINTING_HAND
 
             if rl.IsMouseButtonReleased(.LEFT) {
                 state.selected_sprite = &sprite
+                state.selected_sprite_index = index
             }
             break
         }
@@ -100,6 +104,7 @@ UpdateEditor :: proc(project: ^core.Project) {
             if rl.IsMouseButtonReleased(.LEFT) {
                 if !rl.CheckCollisionPointRec(mouse_position, state.selected_sprite.source) {
                     state.selected_sprite = nil
+                    state.selected_sprite_index = -1
                 }
             }
         }
@@ -137,6 +142,7 @@ UpdateCamera :: proc() {
     }
 }
 
+// TODO: Move to an event queue
 @(private = "file")
 HandleEditorActions :: proc(project: ^core.Project) {
     if state.save_project do core.WriteProject(project)
@@ -149,12 +155,24 @@ HandleEditorActions :: proc(project: ^core.Project) {
         if len(project.atlas) == 0 {
             core.CreateNewAtlas(project, "Blank Atlas")
         }
+
+        state.current_atlas_index = clamp(state.current_atlas_index, 0, len(project.atlas) - 1)
+    }
+
+    if state.delete_current_sprite {
+        core.DeleteSprite(project, state.selected_sprite)
+
+        unordered_remove(&state.current_atlas.sprites, state.selected_sprite_index)
+
+        PackSprites(project)
+        core.GenerateAtlas(state.current_atlas)
     }
 
     state.export_project = false
     state.save_project = false
     state.create_new_atlas = false
     state.delete_current_atlas = false
+    state.delete_current_sprite = false
 }
 
 @(private = "file")
@@ -182,7 +200,14 @@ HandleShortcuts :: proc(project: ^core.Project) {
         if rl.IsKeyPressed(.S) do state.save_project = true
         if rl.IsKeyPressed(.E) do state.export_project = true
         if rl.IsKeyPressed(.N) do state.create_new_atlas = true
-        if rl.IsKeyPressed(.Y) do state.delete_current_atlas = true
+
+        if rl.IsKeyPressed(.Y) {
+            if state.selected_sprite != nil {
+                state.delete_current_sprite = true
+            } else {
+                state.delete_current_atlas = true
+            }
+        }
 
         if rl.IsKeyPressed(.R) {
             if state.selected_sprite != nil {
@@ -207,6 +232,7 @@ HandleShortcuts :: proc(project: ^core.Project) {
 @(private = "file")
 HandleDroppedFiles :: proc(project: ^core.Project) {
     context.random_generator = crypto.random_generator()
+
     if rl.IsFileDropped() {
         files := rl.LoadDroppedFiles()
         defer rl.UnloadDroppedFiles(files)
@@ -275,7 +301,7 @@ PackSprites :: proc(project: ^core.Project) {
 
     pack_result := stb.pack_rects(&stb_context, raw_data(stb_rects), i32(len(stb_rects)))
 
-    if pack_result == 1 {
+    if pack_result != 1 {
         rl.TraceLog(.ERROR, "[PACK] Did not pack all sprites!")
     }
 

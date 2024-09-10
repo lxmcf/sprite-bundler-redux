@@ -53,13 +53,7 @@ GenerateAtlas :: proc(atlas: ^Atlas) {
     rl.ImageClearBackground(&atlas.image, rl.BLANK)
 
     for sprite in atlas.sprites {
-        rl.ImageDraw(
-            &atlas.image,
-            sprite.image,
-            {0, 0, sprite.source.width, sprite.source.height},
-            sprite.source,
-            rl.WHITE,
-        )
+        rl.ImageDraw(&atlas.image, sprite.image, {0, 0, sprite.source.width, sprite.source.height}, sprite.source, rl.WHITE)
     }
 
     rl.UnloadTexture(atlas.texture)
@@ -90,14 +84,8 @@ RenameAtlas :: proc(atlas: ^Atlas, name: string) {
 DeleteAtlas :: proc(project: ^Project, index: int) {
     atlas := project.atlas[index]
 
-    for sprite in atlas.sprites {
-        delete(sprite.name)
-        delete(sprite.file)
-        delete(sprite.atlas)
-
-        rl.UnloadImage(sprite.image)
-
-        delete(sprite.animation.frames)
+    for &sprite in atlas.sprites {
+        DeleteSprite(project, &sprite)
     }
 
     rl.UnloadImage(atlas.image)
