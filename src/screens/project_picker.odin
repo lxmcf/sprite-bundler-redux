@@ -72,6 +72,15 @@ UnloadProjectPicker :: proc() {
 }
 
 UpdateProjectPicker :: proc(project: ^core.Project) {
+    if rl.IsFileDropped() {
+        files := rl.LoadDroppedFiles()
+        defer rl.UnloadDroppedFiles(files)
+
+        if files.count == 1 {
+            project^, _ = core.LoadProject(string(files.paths[0]))
+        }
+    }
+
     ctx := core.Begin()
     defer core.End()
 
