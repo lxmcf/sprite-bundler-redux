@@ -92,11 +92,7 @@ End :: proc() {
         case ^mu.Command_Icon:
             rect := mu.default_atlas[cmd.id]
             position: Vector2i = {cmd.rect.x + (cmd.rect.w - rect.w) / 2, cmd.rect.y + (cmd.rect.h - rect.h) / 2}
-            DrawFromAtlas(
-                rect,
-                {f32(position.x), f32(position.y)},
-                {cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a},
-            )
+            DrawFromAtlas(rect, {f32(position.x), f32(position.y)}, {cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a})
 
         case ^mu.Command_Clip:
             rl.EndScissorMode()

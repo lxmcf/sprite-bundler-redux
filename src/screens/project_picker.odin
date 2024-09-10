@@ -84,7 +84,12 @@ UpdateProjectPicker :: proc(project: ^core.Project) {
     ctx := core.Begin()
     defer core.End()
 
-    rect: mu.Rect = {(rl.GetScreenWidth() / 2) - (WINDOW_WIDTH / 2), (rl.GetScreenHeight() / 2) - (WINDOW_HEIGHT / 2), WINDOW_WIDTH, WINDOW_HEIGHT}
+    rect: mu.Rect = {
+        (rl.GetScreenWidth() / 2) - (WINDOW_WIDTH / 2),
+        (rl.GetScreenHeight() / 2) - (WINDOW_HEIGHT / 2),
+        WINDOW_WIDTH,
+        WINDOW_HEIGHT,
+    }
 
     // NOTE: This is awful, maybe I should just remake raygui?
     if mu.window(ctx, "Projects", rect, {.NO_RESIZE, .NO_CLOSE}) {

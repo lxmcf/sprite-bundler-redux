@@ -49,7 +49,7 @@ PadFile :: proc(handle: os.Handle, alignment: i64) {
 }
 
 ExportBundle :: proc(project: Project) -> BundleError {
-    export_directory := fmt.tprint(project.directory, "export", sep = filepath.SEPARATOR_STRING)
+    export_directory := fmt.tprint(project.working_directory, "export", sep = filepath.SEPARATOR_STRING)
     handle_file := fmt.tprint(export_directory, BUNDLE_FILE, sep = filepath.SEPARATOR_STRING)
 
     os.make_directory(export_directory)

@@ -102,5 +102,8 @@ I did use compression on the texture atlas data ([PNG Data](http://www.libpng.or
 #### Q) How efficient is the texture packing?
 Very! I have not bench marked anything but I am using [stb rect pack](https://github.com/nothings/stb) which is infinitely more robust than my initial 'MassWidthSort' method...
 
+#### Q) What is coming next?
+Not a lot... Or maybe lots; I don't know, you can check the [roadmap](/ROADMAP.md)!
+
 #### Q) Are the new sour skittles better than the old ones?
 No :slightly_smiling_face:
