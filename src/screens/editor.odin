@@ -230,7 +230,6 @@ HandleShortcuts :: proc(project: ^core.Project) {
 
 @(private = "file")
 HandleDroppedFiles :: proc(project: ^core.Project) {
-    context.random_generator = crypto.random_generator()
 
     if rl.IsFileDropped() {
         files := rl.LoadDroppedFiles()
@@ -246,6 +245,8 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
                 name := strings.clone_from_cstring(rl.GetFileNameWithoutExt(path))
 
                 if project.config.copy_files {
+                    context.random_generator = crypto.random_generator()
+
                     id := uuid.generate_v7_basic()
                     filename := strings.concatenate(
                         {uuid.to_string(id, context.temp_allocator), ".png"},
@@ -333,13 +334,21 @@ DrawMainEditor :: proc(project: ^core.Project) {
     rl.DrawTextureV(project.background, {}, rl.WHITE)
     rl.DrawTextureV(state.current_atlas.texture, {}, rl.WHITE)
 
-    // TODO: Work out how to properly use the scissor modes to minimise this
     if state.selected_sprite != nil {
-        for sprite in state.current_atlas.sprites {
-            if state.selected_sprite.name != sprite.name {
-                rl.DrawRectangleRec(sprite.source, rl.Fade(rl.BLACK, 0.5))
-            }
-        }
+        rl.DrawRectangle(0, 0, i32(project.config.atlas_size), i32(project.config.atlas_size), rl.Fade(rl.BLACK, 0.5))
+        rl.DrawTextureRec(
+            project.background,
+            state.selected_sprite.source,
+            {state.selected_sprite.source.x, state.selected_sprite.source.y},
+            rl.WHITE,
+        )
+
+        rl.DrawTextureRec(
+            state.current_atlas.texture,
+            state.selected_sprite.source,
+            {state.selected_sprite.source.x, state.selected_sprite.source.y},
+            rl.WHITE,
+        )
     }
 }
 

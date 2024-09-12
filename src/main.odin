@@ -64,8 +64,12 @@ main :: proc() {
 
     rl.SetWindowMinSize(640, 360)
     rl.SetWindowState({.WINDOW_RESIZABLE})
-    rl.SetTraceLogLevel(.DEBUG)
     rl.SetExitKey(.KEY_NULL)
+    when ODIN_DEBUG {
+        rl.SetTraceLogLevel(.DEBUG)
+    } else {
+        rl.SetTraceLogLevel(.NONE)
+    }
 
     // Set max framerate without vsync
     max_fps := rl.GetMonitorRefreshRate(rl.GetCurrentMonitor())
