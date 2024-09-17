@@ -39,6 +39,7 @@ EditorState :: struct {
     create_new_atlas:      bool,
     delete_current_atlas:  bool,
     delete_current_sprite: bool,
+    rotate_current_sprite: bool,
 }
 
 @(private = "file")
@@ -167,11 +168,19 @@ HandleEditorActions :: proc(project: ^core.Project) {
         core.GenerateAtlas(state.current_atlas)
     }
 
+    if state.rotate_current_sprite {
+        rl.ImageRotateCW(&state.selected_sprite.image)
+
+        PackSprites(project)
+        core.GenerateAtlas(state.current_atlas)
+    }
+
     state.export_project = false
     state.save_project = false
     state.create_new_atlas = false
     state.delete_current_atlas = false
     state.delete_current_sprite = false
+    state.rotate_current_sprite = false
 }
 
 @(private = "file")
@@ -226,6 +235,12 @@ HandleShortcuts :: proc(project: ^core.Project) {
             core.ImportBundle("bundle.lspx")
         }
     }
+
+    if rl.IsKeyDown(.LEFT_ALT) {
+        if rl.IsKeyReleased(.R) {
+            state.rotate_current_sprite = true
+        }
+    }
 }
 
 @(private = "file")
@@ -248,24 +263,15 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
                     context.random_generator = crypto.random_generator()
 
                     id := uuid.generate_v7_basic()
-                    filename := strings.concatenate(
-                        {uuid.to_string(id, context.temp_allocator), ".png"},
-                        context.temp_allocator,
-                    )
+                    filename := strings.concatenate({uuid.to_string(id, context.temp_allocator), ".png"}, context.temp_allocator)
 
                     for os.is_file(filename) {
                         id = uuid.generate_v7_basic()
-                        filename = strings.concatenate(
-                            {uuid.to_string(id, context.temp_allocator), ".png"},
-                            context.temp_allocator,
-                        )
+                        filename = strings.concatenate({uuid.to_string(id, context.temp_allocator), ".png"}, context.temp_allocator)
                     }
 
                     path = strings.clone_to_cstring(filename, context.temp_allocator)
-                    export_path := strings.concatenate(
-                        {project.working_directory, project.config.assets_dir, filepath.SEPARATOR_STRING, filename},
-                        context.temp_allocator,
-                    )
+                    export_path := strings.concatenate({project.working_directory, project.config.assets_dir, filepath.SEPARATOR_STRING, filename}, context.temp_allocator)
 
                     rl.ExportImage(image, strings.clone_to_cstring(export_path, context.temp_allocator))
                 }
@@ -354,21 +360,13 @@ DrawMainEditor :: proc(project: ^core.Project) {
 
 @(private = "file")
 DrawEditorGui :: proc(project: ^core.Project) {
-    rl.DrawTextEx(
-        rl.GetFontDefault(),
-        strings.clone_to_cstring(state.current_atlas.name, context.temp_allocator),
-        rl.GetWorldToScreen2D({}, state.camera) + {0, -48},
-        40,
-        1,
-        rl.WHITE,
-    )
+    rl.DrawTextEx(rl.GetFontDefault(), strings.clone_to_cstring(state.current_atlas.name, context.temp_allocator), rl.GetWorldToScreen2D({}, state.camera) + {0, -48}, 40, 1, rl.WHITE)
 
     if state.selected_sprite != nil {
         position: rl.Vector2 = {state.selected_sprite.source.x, state.selected_sprite.source.y}
         adjusted_position: rl.Vector2 = rl.GetWorldToScreen2D(position, state.camera)
 
-        scaled_rect_size: rl.Vector2 =
-            {state.selected_sprite.source.width, state.selected_sprite.source.height} * state.camera.zoom
+        scaled_rect_size: rl.Vector2 = {state.selected_sprite.source.width, state.selected_sprite.source.height} * state.camera.zoom
 
         rl.DrawRectangleLinesEx({adjusted_position.x, adjusted_position.y, scaled_rect_size.x, scaled_rect_size.y}, 1, rl.RED)
 
@@ -376,17 +374,9 @@ DrawEditorGui :: proc(project: ^core.Project) {
         rl.DrawCircleLinesV(position_origin, 4, rl.RED)
 
         if !rl.Vector2Equals(state.selected_sprite.origin, {}) || state.should_edit_origin {
-            rl.DrawLineV(
-                {adjusted_position.x, position_origin.y},
-                {adjusted_position.x + scaled_rect_size.x, position_origin.y},
-                rl.Fade(rl.RED, 0.5),
-            )
+            rl.DrawLineV({adjusted_position.x, position_origin.y}, {adjusted_position.x + scaled_rect_size.x, position_origin.y}, rl.Fade(rl.RED, 0.5))
 
-            rl.DrawLineV(
-                {position_origin.x, adjusted_position.y},
-                {position_origin.x, adjusted_position.y + scaled_rect_size.y},
-                rl.Fade(rl.RED, 0.5),
-            )
+            rl.DrawLineV({position_origin.x, adjusted_position.y}, {position_origin.x, adjusted_position.y + scaled_rect_size.y}, rl.Fade(rl.RED, 0.5))
         }
 
         sprite_name := strings.clone_to_cstring(state.selected_sprite.name, context.temp_allocator)

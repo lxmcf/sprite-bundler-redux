@@ -23,12 +23,19 @@ typedef struct {
     Sprite2D* sprite;
 } Bundle;
 
+typedef enum {
+    FLIP_NONE       = 0x00000001,
+    FLIP_HORIZONTAL = 0x00000002,
+    FLIP_VERTICAL   = 0x00000004,
+} FlipMode;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 void DrawSprite (int index, Vector2 position, Color color);
-void DrawSpriteEx (int index, Vector2 position, Vector2 scale, float rotation, Color color);
+void DrawSpriteEx (int index, Vector2 position, float scale, float rotation, Color color);
+void DrawSpritePro (int index, Vector2 position, Vector2 scale, float rotation, int flip_mode, Color color);
 
 Vector2 GetSpriteOrigin (int index);
 
@@ -43,6 +50,7 @@ void UnloadBundle (Bundle bundle);
 
 int IsBundleReady (Bundle bundle);
 
+#define LSPX_IMPL
 #if defined(LSPX_IMPLEMENTATION) || defined(LSPX_IMPL)
 
 #include <stdio.h>
@@ -90,7 +98,7 @@ void DrawSprite (int index, Vector2 position, Color color) {
         color);
 }
 
-void DrawSpriteEx (int index, Vector2 position, Vector2 scale, float rotation, Color color) {
+void DrawSpriteEx (int index, Vector2 position, float scale, float rotation, Color color) {
     if (lspx__active_bundle == NULL)
         return;
     if (index == -1 || index > lspx__active_bundle->sprite_count - 1)
@@ -101,12 +109,44 @@ void DrawSpriteEx (int index, Vector2 position, Vector2 scale, float rotation, C
     Rectangle destination = CLITERAL (Rectangle){
         position.x,
         position.y,
-        sprite->source.width * scale.x,
-        sprite->source.height * scale.y};
+        sprite->source.width * scale,
+        sprite->source.height * scale,
+    };
 
     DrawTexturePro (
         lspx__active_bundle->atlas[sprite->atlas_index],
         sprite->source,
+        destination,
+        CLITERAL (Vector2){sprite->origin.x * scale, sprite->origin.y * scale},
+        rotation,
+        color);
+}
+
+void DrawSpritePro (int index, Vector2 position, Vector2 scale, float rotation, int flip_mode, Color color) {
+    if (lspx__active_bundle == NULL)
+        return;
+    if (index == -1 || index > lspx__active_bundle->sprite_count - 1)
+        return;
+
+    Sprite2D* sprite = &lspx__active_bundle->sprite[index];
+
+    Rectangle source = sprite->source;
+
+    if (flip_mode | FLIP_HORIZONTAL)
+        source.width *= -1;
+    if (flip_mode | FLIP_VERTICAL)
+        source.height *= -1;
+
+    Rectangle destination = CLITERAL (Rectangle){
+        position.x,
+        position.y,
+        sprite->source.width * scale.x,
+        sprite->source.height * scale.y,
+    };
+
+    DrawTexturePro (
+        lspx__active_bundle->atlas[sprite->atlas_index],
+        source,
         destination,
         CLITERAL (Vector2){sprite->origin.x * scale.x, sprite->origin.y * scale.y},
         rotation,

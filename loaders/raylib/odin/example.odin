@@ -28,7 +28,7 @@ main :: proc() {
         rl.ClearBackground(rl.RAYWHITE)
 
         if ls.IsBundleReady(bundle) {
-            ls.DrawSpriteEx(sprite_names[current_sprite % len(sprite_names)], {320, 180}, {1 + time, 1 + time}, rotation)
+            ls.DrawSpriteEx(sprite_names[current_sprite % len(sprite_names)], {320, 180}, 1 + time, rotation)
 
             rl.DrawText("Press [SPACE] to cycle sprites!", 8, 8, 20, rl.LIGHTGRAY)
             rl.DrawText(rl.TextFormat("Current sprite: %s", sprite_names[current_sprite % len(sprite_names)]), 8, 32, 20, rl.LIGHTGRAY)

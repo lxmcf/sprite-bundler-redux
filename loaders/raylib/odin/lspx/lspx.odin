@@ -24,6 +24,13 @@ Bundle :: struct {
     atlas_size:   i32,
 }
 
+FlipModes :: enum {
+    Flip_Horizontal,
+    Flip_Vertical,
+}
+
+FlipMode :: distinct bit_set[FlipModes]
+
 @(private)
 active_bundle: Bundle
 
@@ -165,15 +172,30 @@ DrawSprite :: proc(sprite: string, position: rl.Vector2, color: rl.Color = rl.WH
     rl.DrawTexturePro(current_atlas.texture, current_sprite.source, destination, current_sprite.origin, 0, color)
 }
 
-DrawSpriteEx :: proc(sprite: string, position: rl.Vector2, scale: rl.Vector2, rotation: f32, color: rl.Color = rl.WHITE) {
+DrawSpriteEx :: proc(sprite: string, position: rl.Vector2, scale: f32, rotation: f32, color: rl.Color = rl.WHITE) {
     if !IsBundleReady(active_bundle) do return
 
     current_sprite := active_bundle.sprites[sprite]
     current_atlas := active_bundle.atlas[current_sprite.atlas]
 
-    destination := rl.Rectangle{position.x, position.y, current_sprite.source.width * scale.x, current_sprite.source.height * scale.y}
+    destination := rl.Rectangle{position.x, position.y, current_sprite.source.width * scale, current_sprite.source.height * scale}
 
     rl.DrawTexturePro(current_atlas.texture, current_sprite.source, destination, current_sprite.origin * scale, rotation, color)
+}
+
+DrawSpritePro :: proc(sprite: string, position: rl.Vector2, scale: rl.Vector2, rotation: f32, flip: FlipMode = {}, color: rl.Color = rl.WHITE) {
+    if !IsBundleReady(active_bundle) do return
+
+    current_sprite := active_bundle.sprites[sprite]
+    current_atlas := active_bundle.atlas[current_sprite.atlas]
+
+    source := current_sprite.source
+    destination := rl.Rectangle{position.x, position.y, current_sprite.source.width * scale.x, current_sprite.source.height * scale.y}
+
+    if .Flip_Horizontal in flip do source.width *= -1
+    if .Flip_Vertical in flip do source.height *= -1
+
+    rl.DrawTexturePro(current_atlas.texture, source, destination, current_sprite.origin * scale, rotation, color)
 }
 
 GetSpriteOrigin :: proc(sprite: string) -> rl.Vector2 {

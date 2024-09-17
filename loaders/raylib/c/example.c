@@ -1,4 +1,5 @@
 #include <math.h>
+#include <raylib.h>
 
 #define LSPX_IMPL
 #include "lspx.h"
@@ -21,8 +22,8 @@ int main () {
             current_sprite++;
 
         rotation += GetFrameTime () * 90;
-        float time    = GetTime () * 2;
-        Vector2 scale = CLITERAL (Vector2){1 + SINE (time), 1 + SINE (time)};
+        float time  = GetTime () * 2;
+        float scale = 1.0f + SINE (time);
 
         BeginDrawing ();
         ClearBackground (RAYWHITE);
