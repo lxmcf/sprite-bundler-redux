@@ -11,10 +11,7 @@ import rl "vendor:raylib"
 DEFAULT_PROJECT_DIRECTORY :: #config(CUSTOM_PROJECT_DIRECTORY, "projects")
 DEFAULT_PROJECT_FILENAME :: #config(CUSTOM_PROJECT_FILENAME, "project.lspp")
 DEFAULT_PROJECT_ASSETS :: #config(CUSTOM_ASSET_DIRECTORY, "assets")
-DEFAULT_PROJECT_SCHEMA :: #config(
-    CUSTOM_PROJECT_SCHEMA,
-    "https://raw.githubusercontent.com/lxmcf/sprite-bundler-redux/main/data/lspp.scheme.json",
-)
+DEFAULT_PROJECT_SCHEMA :: #config(CUSTOM_PROJECT_SCHEMA, "https://raw.githubusercontent.com/lxmcf/sprite-bundler-redux/main/data/lspp.scheme.json")
 
 DEFAULT_ATLAS_NAME :: "atlas"
 CURRENT_PROJECT_VERSION :: 100
@@ -65,12 +62,7 @@ ProjectToWriteable :: proc(project: Project) -> WriteableProject {
     writable: WriteableProject = {
         version = project.version,
         name = project.name,
-        config = {
-            assets_dir = project.config.assets_dir,
-            copy_files = project.config.copy_files,
-            auto_center = project.config.auto_center,
-            atlas_size = project.config.atlas_size,
-        },
+        config = {assets_dir = project.config.assets_dir, copy_files = project.config.copy_files, auto_center = project.config.auto_center, atlas_size = project.config.atlas_size},
     }
 
     for atlas in project.atlas {
@@ -83,23 +75,12 @@ ProjectToWriteable :: proc(project: Project) -> WriteableProject {
 @(private)
 ProjectToReadable :: proc(project: WriteableProject) -> Project {
     readable: Project = {
+        name = strings.clone(project.name),
         version = project.version,
-        config = {
-            assets_dir = strings.clone(project.config.assets_dir),
-            copy_files = project.config.copy_files,
-            auto_center = project.config.auto_center,
-            atlas_size = project.config.atlas_size,
-        },
+        config = {assets_dir = strings.clone(project.config.assets_dir), copy_files = project.config.copy_files, auto_center = project.config.auto_center, atlas_size = project.config.atlas_size},
     }
 
-    background_image := rl.GenImageChecked(
-        i32(readable.config.atlas_size),
-        i32(readable.config.atlas_size),
-        i32(readable.config.atlas_size) / 32,
-        i32(readable.config.atlas_size) / 32,
-        rl.LIGHTGRAY,
-        rl.GRAY,
-    )
+    background_image := rl.GenImageChecked(i32(readable.config.atlas_size), i32(readable.config.atlas_size), i32(readable.config.atlas_size) / 32, i32(readable.config.atlas_size) / 32, rl.LIGHTGRAY, rl.GRAY)
     defer rl.UnloadImage(background_image)
 
     readable.background = rl.LoadTextureFromImage(background_image)
@@ -131,12 +112,7 @@ CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center:
         version = CURRENT_PROJECT_VERSION,
         name = name,
         file = project_file,
-        config = {
-            assets_dir = DEFAULT_PROJECT_ASSETS,
-            copy_files = copy_files,
-            auto_center = auto_center,
-            atlas_size = atlas_size,
-        },
+        config = {assets_dir = DEFAULT_PROJECT_ASSETS, copy_files = copy_files, auto_center = auto_center, atlas_size = atlas_size},
     }
 
     atlas_to_create: Atlas = {
@@ -158,9 +134,7 @@ LoadProject :: proc(filename: string) -> (Project, ProjectError) {
 
         new_project = ToReadable(loaded_project)
 
-        new_project.working_directory = strings.concatenate(
-            {filepath.dir(filename, context.temp_allocator), filepath.SEPARATOR_STRING},
-        )
+        new_project.working_directory = strings.concatenate({filepath.dir(filename, context.temp_allocator), filepath.SEPARATOR_STRING})
 
         new_project.file = strings.concatenate({new_project.working_directory, DEFAULT_PROJECT_FILENAME})
 
@@ -171,10 +145,7 @@ LoadProject :: proc(filename: string) -> (Project, ProjectError) {
                 sprite_file: string
 
                 if new_project.config.copy_files {
-                    sprite_file = strings.concatenate(
-                        {new_project.working_directory, new_project.config.assets_dir, filepath.SEPARATOR_STRING, sprite.file},
-                        context.temp_allocator,
-                    )
+                    sprite_file = strings.concatenate({new_project.working_directory, new_project.config.assets_dir, filepath.SEPARATOR_STRING, sprite.file}, context.temp_allocator)
                 } else {
                     sprite_file = sprite.file
                 }

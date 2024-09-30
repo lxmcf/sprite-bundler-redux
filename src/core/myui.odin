@@ -63,13 +63,7 @@ End :: proc() {
     for command_variant in mu.next_command_iterator(&global_context, &command) {
         #partial switch cmd in command_variant {
         case ^mu.Command_Rect:
-            rl.DrawRectangle(
-                cmd.rect.x,
-                cmd.rect.y,
-                cmd.rect.w,
-                cmd.rect.h,
-                {cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a},
-            )
+            rl.DrawRectangle(cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h, {cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a})
 
         case ^mu.Command_Text:
             position: Vector2i = {cmd.pos.x, cmd.pos.y}
@@ -79,11 +73,7 @@ End :: proc() {
                     rune := min(int(char), 127)
                     rect := mu.default_atlas[mu.DEFAULT_ATLAS_FONT + rune]
 
-                    DrawFromAtlas(
-                        rect,
-                        {f32(position.x), f32(position.y)},
-                        {cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a},
-                    )
+                    DrawFromAtlas(rect, {f32(position.x), f32(position.y)}, {cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a})
 
                     position.x += rect.w
                 }
@@ -153,17 +143,7 @@ HandleKeyboardInput :: proc() {
         mu: mu.Key,
     }
 
-    key_mappings := [?]KeyMap {
-        {.LEFT_SHIFT, .SHIFT},
-        {.RIGHT_SHIFT, .SHIFT},
-        {.LEFT_CONTROL, .CTRL},
-        {.RIGHT_CONTROL, .CTRL},
-        {.LEFT_ALT, .ALT},
-        {.RIGHT_ALT, .ALT},
-        {.ENTER, .RETURN},
-        {.KP_ENTER, .RETURN},
-        {.BACKSPACE, .BACKSPACE},
-    }
+    key_mappings := [?]KeyMap{{.LEFT_SHIFT, .SHIFT}, {.RIGHT_SHIFT, .SHIFT}, {.LEFT_CONTROL, .CTRL}, {.RIGHT_CONTROL, .CTRL}, {.LEFT_ALT, .ALT}, {.RIGHT_ALT, .ALT}, {.ENTER, .RETURN}, {.KP_ENTER, .RETURN}, {.BACKSPACE, .BACKSPACE}}
 
     for key in key_mappings {
         if rl.IsKeyPressed(key.rl) {

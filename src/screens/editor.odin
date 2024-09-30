@@ -8,7 +8,7 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 
-import mu "vendor:microui"
+// import mu "vendor:microui"
 import rl "vendor:raylib"
 import stb "vendor:stb/rect_pack"
 
@@ -342,19 +342,9 @@ DrawMainEditor :: proc(project: ^core.Project) {
 
     if state.selected_sprite != nil {
         rl.DrawRectangle(0, 0, i32(project.config.atlas_size), i32(project.config.atlas_size), rl.Fade(rl.BLACK, 0.5))
-        rl.DrawTextureRec(
-            project.background,
-            state.selected_sprite.source,
-            {state.selected_sprite.source.x, state.selected_sprite.source.y},
-            rl.WHITE,
-        )
+        rl.DrawTextureRec(project.background, state.selected_sprite.source, {state.selected_sprite.source.x, state.selected_sprite.source.y}, rl.WHITE)
 
-        rl.DrawTextureRec(
-            state.current_atlas.texture,
-            state.selected_sprite.source,
-            {state.selected_sprite.source.x, state.selected_sprite.source.y},
-            rl.WHITE,
-        )
+        rl.DrawTextureRec(state.current_atlas.texture, state.selected_sprite.source, {state.selected_sprite.source.x, state.selected_sprite.source.y}, rl.WHITE)
     }
 }
 
@@ -391,101 +381,103 @@ DrawEditorGui :: proc(project: ^core.Project) {
         rl.DrawTextEx(rl.GetFontDefault(), sprite_name, text_position + 2, 30, 1, rl.WHITE)
     }
 
-    ctx := core.Begin()
-    defer core.End()
+    rl.GuiEnableTooltip()
 
-    if mu.window(ctx, "editor_toolbar", {0, 0, rl.GetScreenWidth(), TOOLBAR_HEIGHT}, {.NO_RESIZE, .NO_TITLE}) {
-        container := mu.get_current_container(ctx)
-        container.rect.w = rl.GetScreenWidth()
+    rl.GuiPanel({0, 0, f32(rl.GetRenderWidth()), 32}, nil)
 
-        mu.layout_row(ctx, {64, 64, 96, 96})
+    rl.GuiSetTooltip("Save Project [CTRL + S]")
+    if rl.GuiButton({4, 4, 80, 24}, "#2# Save") do state.save_project = true
 
-        if .SUBMIT in mu.button(ctx, "Save") {
-            state.save_project = true
-        }
+    rl.GuiSetTooltip("Save Project [CTRL + E]")
+    if rl.GuiButton({88, 4, 80, 24}, "#195# Export") do state.export_project = true
 
-        if .SUBMIT in mu.button(ctx, "Export") {
-            state.export_project = true
-        }
+    if state.selected_sprite != nil {
+        rl.GuiSetTooltip("Rename Sprite [CTRL + R]")
+        if rl.GuiButton({172, 4, 120, 24}, "#30# Rename Sprite") do state.is_sprite_rename = true
 
-        if .SUBMIT in mu.button(ctx, "Rename Atlas") {
-            state.is_atlas_rename = true
-        }
-
-        if .SUBMIT in mu.button(ctx, "Rename Sprite") {
-            if state.selected_sprite != nil {
-                state.is_sprite_rename = true
-            }
-        }
+        rl.GuiSetTooltip("Set Origin Point [CTRL + V]")
+        if rl.GuiButton({294, 4, 90, 24}, "#50# Set Origin") do state.should_edit_origin = true
+    } else {
+        rl.GuiSetTooltip("Rename Atlas [CTRL + R]")
+        if rl.GuiButton({172, 4, 120, 24}, "#30# Rename Atlas") do state.is_atlas_rename = true
     }
+
+    rl.GuiDisableTooltip()
 
     if state.is_atlas_rename {
-        mu.begin_window(ctx, "Rename Atlas", {128, 128, 256, 80}, {.NO_RESIZE, .NO_CLOSE})
-        defer mu.end_window(ctx)
         @(static)
-        length: int
+        anchor := rl.Vector2{4, 36}
 
-        @(static)
-        atlas_rename_buffer: [mu.MAX_TEXT_STORE]byte
-
-        mu.layout_row(ctx, {-1})
-        mu.textbox(ctx, atlas_rename_buffer[:], &length)
-
-        if .SUBMIT in mu.button(ctx, "Submit") {
-            should_close := true
-
-            for atlas in project.atlas {
-                if atlas.name == string(atlas_rename_buffer[:length]) {
-                    should_close = false
-                    break
-                }
-            }
-
-            if should_close {
-                delete(state.current_atlas.name)
-                state.current_atlas.name = strings.clone_from_bytes(atlas_rename_buffer[:length])
-
-                for &sprite in state.current_atlas.sprites {
-                    delete(sprite.atlas)
-
-                    sprite.atlas = strings.clone_from_bytes(atlas_rename_buffer[:length])
-                }
-
-                state.is_atlas_rename = false
-                length = 0
-            }
-        }
+        rl.GuiWindowBox({anchor.x, anchor.y, 256, 80}, "Rename Atlas")
     }
 
-    if state.is_sprite_rename {
-        mu.begin_window(ctx, "Rename Sprite", {128, 128, 256, 80}, {.NO_RESIZE, .NO_CLOSE})
-        defer mu.end_window(ctx)
-        @(static)
-        length: int
+    // if state.is_atlas_rename {
+    //     mu.begin_window(ctx, "Rename Atlas", {128, 128, 256, 80}, {.NO_RESIZE, .NO_CLOSE})
+    //     defer mu.end_window(ctx)
+    //     @(static)
+    //     length: int
 
-        @(static)
-        sprite_rename_buffer: [mu.MAX_TEXT_STORE]byte
+    //     @(static)
+    //     atlas_rename_buffer: [mu.MAX_TEXT_STORE]byte
 
-        mu.layout_row(ctx, {-1})
-        mu.textbox(ctx, sprite_rename_buffer[:], &length)
+    //     mu.layout_row(ctx, {-1})
+    //     mu.textbox(ctx, atlas_rename_buffer[:], &length)
 
-        if .SUBMIT in mu.button(ctx, "Submit") {
-            should_close := true
+    //     if .SUBMIT in mu.button(ctx, "Submit") {
+    //         should_close := true
 
-            for sprite in state.current_atlas.sprites {
-                if sprite.name == string(sprite_rename_buffer[:length]) {
-                    should_close = false
-                    break
-                }
-            }
+    //         for atlas in project.atlas {
+    //             if atlas.name == string(atlas_rename_buffer[:length]) {
+    //                 should_close = false
+    //                 break
+    //             }
+    //         }
 
-            if should_close {
-                delete(state.selected_sprite.name)
-                state.selected_sprite.name = strings.clone_from_bytes(sprite_rename_buffer[:length])
+    //         if should_close {
+    //             delete(state.current_atlas.name)
+    //             state.current_atlas.name = strings.clone_from_bytes(atlas_rename_buffer[:length])
 
-                state.is_sprite_rename = false
-                length = 0
-            }
-        }
-    }
+    //             for &sprite in state.current_atlas.sprites {
+    //                 delete(sprite.atlas)
+
+    //                 sprite.atlas = strings.clone_from_bytes(atlas_rename_buffer[:length])
+    //             }
+
+    //             state.is_atlas_rename = false
+    //             length = 0
+    //         }
+    //     }
+    // }
+
+    // if state.is_sprite_rename {
+    //     mu.begin_window(ctx, "Rename Sprite", {128, 128, 256, 80}, {.NO_RESIZE, .NO_CLOSE})
+    //     defer mu.end_window(ctx)
+    //     @(static)
+    //     length: int
+
+    //     @(static)
+    //     sprite_rename_buffer: [mu.MAX_TEXT_STORE]byte
+
+    //     mu.layout_row(ctx, {-1})
+    //     mu.textbox(ctx, sprite_rename_buffer[:], &length)
+
+    //     if .SUBMIT in mu.button(ctx, "Submit") {
+    //         should_close := true
+
+    //         for sprite in state.current_atlas.sprites {
+    //             if sprite.name == string(sprite_rename_buffer[:length]) {
+    //                 should_close = false
+    //                 break
+    //             }
+    //         }
+
+    //         if should_close {
+    //             delete(state.selected_sprite.name)
+    //             state.selected_sprite.name = strings.clone_from_bytes(sprite_rename_buffer[:length])
+
+    //             state.is_sprite_rename = false
+    //             length = 0
+    //         }
+    //     }
+    // }
 }
