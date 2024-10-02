@@ -3,6 +3,7 @@ package screens
 
 import "core:crypto"
 import "core:encoding/uuid"
+import "core:fmt"
 import "core:math"
 import "core:os"
 import "core:path/filepath"
@@ -121,6 +122,8 @@ DrawEditor :: proc(project: ^core.Project) {
 
 @(private = "file")
 UpdateCamera :: proc() {
+    if state.is_dialog_open do return
+
     if rl.IsMouseButtonDown(.MIDDLE) || rl.IsKeyDown(.LEFT_ALT) {
         delta := rl.GetMouseDelta()
 
@@ -245,7 +248,6 @@ HandleShortcuts :: proc(project: ^core.Project) {
 
 @(private = "file")
 HandleDroppedFiles :: proc(project: ^core.Project) {
-
     if rl.IsFileDropped() {
         files := rl.LoadDroppedFiles()
         defer rl.UnloadDroppedFiles(files)
@@ -406,9 +408,25 @@ DrawEditorGui :: proc(project: ^core.Project) {
 
     if state.is_atlas_rename {
         @(static)
-        anchor := rl.Vector2{4, 36}
+        anchor := rl.Vector2{172, 36}
 
-        rl.GuiWindowBox({anchor.x, anchor.y, 256, 80}, "Rename Atlas")
+        if rl.GuiWindowBox({anchor.x, anchor.y, 256, 80}, "Rename Atlas") == 1 do state.is_atlas_rename = false
+
+        @(static)
+        edit: bool
+
+        @(static)
+        text: [64]byte
+
+        // NOTE: WTF is this?
+        if rl.GuiTextBox({anchor.x + 4, anchor.y + 28, 248, 20}, cstring(rawptr(&text)), 64, edit) {
+            edit = !edit
+        }
+
+        if rl.IsKeyReleased(.SPACE) {
+            fmt.println(string(text[:]))
+            fmt.println(len(string(text[:])))
+        }
     }
 
     // if state.is_atlas_rename {
