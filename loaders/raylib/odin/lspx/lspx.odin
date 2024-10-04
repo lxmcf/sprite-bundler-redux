@@ -198,6 +198,44 @@ DrawSpritePro :: proc(sprite: string, position: rl.Vector2, scale: rl.Vector2, r
     rl.DrawTexturePro(current_atlas.texture, source, destination, current_sprite.origin * scale, rotation, color)
 }
 
+DrawSpriteNineSlice :: proc(sprite: string, bounds: rl.Rectangle, color: rl.Color = rl.WHITE) {
+    if !IsBundleReady(active_bundle) do return
+
+    current_sprite := active_bundle.sprites[sprite]
+    current_atlas := active_bundle.atlas[current_sprite.atlas]
+    source := current_sprite.source
+
+    cell_width := source.width / 3
+    cell_height := source.height / 3
+
+    top_left := rl.Rectangle{source.x, source.y, cell_width, cell_height}
+    top_middle := rl.Rectangle{source.x + cell_width, source.y, cell_width, cell_height}
+    top_right := rl.Rectangle{source.x + (cell_width * 2), source.y, cell_width, cell_height}
+
+    middle_left := rl.Rectangle{source.x, source.y + cell_height, cell_width, cell_height}
+    middle_middle := rl.Rectangle{source.x + cell_width, source.y + cell_height, cell_width, cell_height}
+    middle_right := rl.Rectangle{source.x + (cell_width * 2), source.y + cell_height, cell_width, cell_height}
+
+    bottom_left := rl.Rectangle{source.x, source.y + (cell_height * 2), cell_width, cell_height}
+    bottom_middle := rl.Rectangle{source.x + cell_width, source.y + (cell_height * 2), cell_width, cell_height}
+    bottom_right := rl.Rectangle{source.x + (cell_width * 2), source.y + (cell_height * 2), cell_width, cell_height}
+
+    // Corners
+    rl.DrawTextureRec(current_atlas.texture, top_left, {bounds.x, bounds.y}, color)
+    rl.DrawTextureRec(current_atlas.texture, top_right, {bounds.x + (bounds.width - cell_width), bounds.y}, color)
+    rl.DrawTextureRec(current_atlas.texture, bottom_left, {bounds.x, bounds.y + (bounds.height - cell_height)}, color)
+    rl.DrawTextureRec(current_atlas.texture, bottom_right, {bounds.x + (bounds.width - cell_width), bounds.y + (bounds.height - cell_height)}, color)
+
+    // Connectors
+    rl.DrawTexturePro(current_atlas.texture, top_middle, {bounds.x + cell_width, bounds.y, bounds.width - (cell_width * 2), cell_height}, {}, 0, color)
+    rl.DrawTexturePro(current_atlas.texture, middle_left, {bounds.x, bounds.y + cell_height, cell_width, bounds.height - (cell_height * 2)}, {}, 0, color)
+    rl.DrawTexturePro(current_atlas.texture, middle_right, {bounds.x + bounds.width - cell_width, bounds.y + cell_height, cell_width, bounds.height - (cell_height * 2)}, {}, 0, color)
+    rl.DrawTexturePro(current_atlas.texture, bottom_middle, {bounds.x + cell_width, bounds.y + (bounds.height - cell_height), bounds.width - (cell_width * 2), cell_height}, {}, 0, color)
+
+    // Centre
+    rl.DrawTexturePro(current_atlas.texture, middle_middle, {bounds.x + cell_width, bounds.y + cell_height, bounds.width - (cell_width * 2), bounds.height - (cell_height * 2)}, {}, 0, color)
+}
+
 GetSpriteOrigin :: proc(sprite: string) -> rl.Vector2 {
     return active_bundle.sprites[sprite].origin
 }

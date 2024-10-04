@@ -5,6 +5,8 @@ lspp
 example
 
 projects/
+# Used for mini testing, not tests
+test/
 
 *.lspp
 *.exe
