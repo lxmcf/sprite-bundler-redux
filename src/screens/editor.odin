@@ -3,7 +3,6 @@ package screens
 
 import "core:crypto"
 import "core:encoding/uuid"
-import "core:fmt"
 import "core:math"
 import "core:os"
 import "core:path/filepath"
@@ -30,6 +29,8 @@ EditorState :: struct {
     is_dialog_open:        bool,
     is_atlas_rename:       bool,
     is_sprite_rename:      bool,
+    atlas_name_buffer:     [64]byte,
+    sprite_name_buffer:    [64]byte,
 
     // Editors
     should_edit_origin:    bool,
@@ -40,7 +41,6 @@ EditorState :: struct {
     create_new_atlas:      bool,
     delete_current_atlas:  bool,
     delete_current_sprite: bool,
-    rotate_current_sprite: bool,
 }
 
 @(private = "file")
@@ -169,13 +169,8 @@ HandleEditorActions :: proc(project: ^core.Project) {
 
         PackSprites(project)
         core.GenerateAtlas(state.current_atlas)
-    }
 
-    if state.rotate_current_sprite {
-        rl.ImageRotateCW(&state.selected_sprite.image)
-
-        PackSprites(project)
-        core.GenerateAtlas(state.current_atlas)
+        state.selected_sprite = nil
     }
 
     state.export_project = false
@@ -183,7 +178,6 @@ HandleEditorActions :: proc(project: ^core.Project) {
     state.create_new_atlas = false
     state.delete_current_atlas = false
     state.delete_current_sprite = false
-    state.rotate_current_sprite = false
 }
 
 @(private = "file")
@@ -222,8 +216,10 @@ HandleShortcuts :: proc(project: ^core.Project) {
 
         if rl.IsKeyPressed(.R) {
             if state.selected_sprite != nil {
+                for i in 0 ..< len(state.selected_sprite.name) do state.atlas_name_buffer[i] = state.selected_sprite.name[i]
                 state.is_sprite_rename = true
             } else {
+                for i in 0 ..< len(state.current_atlas.name) do state.atlas_name_buffer[i] = state.current_atlas.name[i]
                 state.is_atlas_rename = true
             }
         }
@@ -236,12 +232,6 @@ HandleShortcuts :: proc(project: ^core.Project) {
 
         if rl.IsKeyPressed(.P) {
             core.ImportBundle("bundle.lspx")
-        }
-    }
-
-    if rl.IsKeyDown(.LEFT_ALT) {
-        if rl.IsKeyReleased(.R) {
-            state.rotate_current_sprite = true
         }
     }
 }
@@ -352,6 +342,7 @@ DrawMainEditor :: proc(project: ^core.Project) {
 
 @(private = "file")
 DrawEditorGui :: proc(project: ^core.Project) {
+    should_regenerate_atlas: bool
     rl.DrawTextEx(rl.GetFontDefault(), strings.clone_to_cstring(state.current_atlas.name, context.temp_allocator), rl.GetWorldToScreen2D({}, state.camera) + {0, -48}, 40, 1, rl.WHITE)
 
     if state.selected_sprite != nil {
@@ -367,7 +358,6 @@ DrawEditorGui :: proc(project: ^core.Project) {
 
         if !rl.Vector2Equals(state.selected_sprite.origin, {}) || state.should_edit_origin {
             rl.DrawLineV({adjusted_position.x, position_origin.y}, {adjusted_position.x + scaled_rect_size.x, position_origin.y}, rl.Fade(rl.RED, 0.5))
-
             rl.DrawLineV({position_origin.x, adjusted_position.y}, {position_origin.x, adjusted_position.y + scaled_rect_size.y}, rl.Fade(rl.RED, 0.5))
         }
 
@@ -384,24 +374,54 @@ DrawEditorGui :: proc(project: ^core.Project) {
     }
 
     rl.GuiEnableTooltip()
-
     rl.GuiPanel({0, 0, f32(rl.GetRenderWidth()), 32}, nil)
 
     rl.GuiSetTooltip("Save Project [CTRL + S]")
-    if rl.GuiButton({4, 4, 80, 24}, "#2# Save") do state.save_project = true
+    if rl.GuiButton({4, 4, 24, 24}, "#2#") do state.save_project = true
 
-    rl.GuiSetTooltip("Save Project [CTRL + E]")
-    if rl.GuiButton({88, 4, 80, 24}, "#195# Export") do state.export_project = true
+    rl.GuiSetTooltip("Export Project [CTRL + E]")
+    if rl.GuiButton({32, 4, 24, 24}, "#7#") do state.export_project = true
 
     if state.selected_sprite != nil {
         rl.GuiSetTooltip("Rename Sprite [CTRL + R]")
-        if rl.GuiButton({172, 4, 120, 24}, "#30# Rename Sprite") do state.is_sprite_rename = true
+        if rl.GuiButton({60, 4, 24, 24}, "#30#") {
+            for i in 0 ..< len(state.selected_sprite.name) do state.sprite_name_buffer[i] = state.selected_sprite.name[i]
+            state.is_sprite_rename = true
+        }
 
-        rl.GuiSetTooltip("Set Origin Point [CTRL + V]")
-        if rl.GuiButton({294, 4, 90, 24}, "#50# Set Origin") do state.should_edit_origin = true
+        rl.GuiSetTooltip("Set Origin Point [V]")
+        if rl.GuiButton({88, 4, 24, 24}, "#50#") do state.should_edit_origin = true
+
+        rl.GuiSetTooltip("Rotate Sprite 90 Degrees")
+        if rl.GuiButton({116, 4, 24, 24}, "#76#") {
+            rl.ImageRotateCW(&state.selected_sprite.image)
+            state.selected_sprite.source.width = f32(state.selected_sprite.image.width)
+            state.selected_sprite.source.height = f32(state.selected_sprite.image.height)
+
+            // TODO: Rotate origin point
+            state.selected_sprite.origin = {}
+            should_regenerate_atlas = true
+        }
+
+        rl.GuiSetTooltip("Flip Sprite Horizontally")
+        if rl.GuiButton({144, 4, 24, 24}, "#40#") {
+            rl.ImageFlipHorizontal(&state.selected_sprite.image)
+
+            should_regenerate_atlas = true
+        }
+
+        rl.GuiSetTooltip("Flip Sprite Vertically")
+        if rl.GuiButton({172, 4, 24, 24}, "#41#") {
+            rl.ImageFlipVertical(&state.selected_sprite.image)
+
+            should_regenerate_atlas = true
+        }
     } else {
         rl.GuiSetTooltip("Rename Atlas [CTRL + R]")
-        if rl.GuiButton({172, 4, 120, 24}, "#30# Rename Atlas") do state.is_atlas_rename = true
+        if rl.GuiButton({60, 4, 24, 24}, "#30#") {
+            for i in 0 ..< len(state.current_atlas.name) do state.atlas_name_buffer[i] = state.current_atlas.name[i]
+            state.is_atlas_rename = true
+        }
     }
 
     rl.GuiDisableTooltip()
@@ -415,87 +435,63 @@ DrawEditorGui :: proc(project: ^core.Project) {
         @(static)
         edit: bool
 
-        @(static)
-        text: [64]byte
-
         // NOTE: WTF is this?
-        if rl.GuiTextBox({anchor.x + 4, anchor.y + 28, 248, 20}, cstring(rawptr(&text)), 64, edit) {
-            edit = !edit
+        if rl.GuiTextBox({anchor.x + 4, anchor.y + 28, 248, 20}, cstring(rawptr(&state.atlas_name_buffer)), 64, edit) do edit = !edit
+
+        rl.GuiEnableTooltip()
+
+        rl.GuiSetTooltip("Submit rename [ENTER]")
+        if rl.GuiButton({anchor.x + 4, anchor.y + 52, 122, 24}, "#112# Submit") || rl.IsKeyPressed(.ENTER) {
+            temp_cstring := cstring(raw_data(state.atlas_name_buffer[:]))
+
+            delete(state.current_atlas.name)
+            state.current_atlas.name = strings.clone_from_cstring_bounded(temp_cstring, len(temp_cstring))
+
+            edit = false
+            state.is_atlas_rename = false
+
+            for i in 0 ..< len(temp_cstring) do state.atlas_name_buffer[i] = 0
         }
 
-        if rl.IsKeyReleased(.SPACE) {
-            fmt.println(string(text[:]))
-            fmt.println(len(string(text[:])))
-        }
+        rl.GuiSetTooltip("Cancel rename [ESCAPE]")
+        if rl.GuiButton({anchor.x + 130, anchor.y + 52, 122, 24}, "#113# Cancel") || rl.IsKeyPressed(.ESCAPE) do state.is_atlas_rename = false
+        rl.GuiDisableTooltip()
     }
 
-    // if state.is_atlas_rename {
-    //     mu.begin_window(ctx, "Rename Atlas", {128, 128, 256, 80}, {.NO_RESIZE, .NO_CLOSE})
-    //     defer mu.end_window(ctx)
-    //     @(static)
-    //     length: int
+    if state.is_sprite_rename {
+        @(static)
+        anchor := rl.Vector2{172, 36}
 
-    //     @(static)
-    //     atlas_rename_buffer: [mu.MAX_TEXT_STORE]byte
+        if rl.GuiWindowBox({anchor.x, anchor.y, 256, 80}, "Rename Sprite") == 1 do state.is_sprite_rename = false
 
-    //     mu.layout_row(ctx, {-1})
-    //     mu.textbox(ctx, atlas_rename_buffer[:], &length)
+        @(static)
+        edit: bool
 
-    //     if .SUBMIT in mu.button(ctx, "Submit") {
-    //         should_close := true
+        // NOTE: WTF is this?
+        if rl.GuiTextBox({anchor.x + 4, anchor.y + 28, 248, 20}, cstring(rawptr(&state.sprite_name_buffer)), 64, edit) do edit = !edit
 
-    //         for atlas in project.atlas {
-    //             if atlas.name == string(atlas_rename_buffer[:length]) {
-    //                 should_close = false
-    //                 break
-    //             }
-    //         }
+        rl.GuiEnableTooltip()
 
-    //         if should_close {
-    //             delete(state.current_atlas.name)
-    //             state.current_atlas.name = strings.clone_from_bytes(atlas_rename_buffer[:length])
+        rl.GuiSetTooltip("Submit rename [ENTER]")
+        if rl.GuiButton({anchor.x + 4, anchor.y + 52, 122, 24}, "#112# Submit") || rl.IsKeyPressed(.ENTER) {
+            temp_cstring := cstring(raw_data(state.sprite_name_buffer[:]))
 
-    //             for &sprite in state.current_atlas.sprites {
-    //                 delete(sprite.atlas)
+            delete(state.selected_sprite.name)
+            state.selected_sprite.name = strings.clone_from_cstring_bounded(temp_cstring, len(temp_cstring))
 
-    //                 sprite.atlas = strings.clone_from_bytes(atlas_rename_buffer[:length])
-    //             }
+            edit = false
+            state.is_sprite_rename = false
 
-    //             state.is_atlas_rename = false
-    //             length = 0
-    //         }
-    //     }
-    // }
+            for i in 0 ..< len(temp_cstring) do state.sprite_name_buffer[i] = 0
+        }
 
-    // if state.is_sprite_rename {
-    //     mu.begin_window(ctx, "Rename Sprite", {128, 128, 256, 80}, {.NO_RESIZE, .NO_CLOSE})
-    //     defer mu.end_window(ctx)
-    //     @(static)
-    //     length: int
+        rl.GuiSetTooltip("Cancel rename [ESCAPE]")
+        if rl.GuiButton({anchor.x + 130, anchor.y + 52, 122, 24}, "#113# Cancel") || rl.IsKeyPressed(.ESCAPE) do state.is_sprite_rename = false
+        rl.GuiDisableTooltip()
+    }
 
-    //     @(static)
-    //     sprite_rename_buffer: [mu.MAX_TEXT_STORE]byte
-
-    //     mu.layout_row(ctx, {-1})
-    //     mu.textbox(ctx, sprite_rename_buffer[:], &length)
-
-    //     if .SUBMIT in mu.button(ctx, "Submit") {
-    //         should_close := true
-
-    //         for sprite in state.current_atlas.sprites {
-    //             if sprite.name == string(sprite_rename_buffer[:length]) {
-    //                 should_close = false
-    //                 break
-    //             }
-    //         }
-
-    //         if should_close {
-    //             delete(state.selected_sprite.name)
-    //             state.selected_sprite.name = strings.clone_from_bytes(sprite_rename_buffer[:length])
-
-    //             state.is_sprite_rename = false
-    //             length = 0
-    //         }
-    //     }
-    // }
+    if should_regenerate_atlas {
+        PackSprites(project)
+        core.GenerateAtlas(state.current_atlas)
+    }
 }
