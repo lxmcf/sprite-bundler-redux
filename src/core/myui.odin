@@ -1,4 +1,5 @@
 // CREDIT: https://gist.github.com/keenanwoodall/b6f7ecf6346ba3be4842c7d9fd1f372d
+// TODO: Remove in favour of raygui
 
 package core
 
@@ -101,7 +102,9 @@ HandleTextInput :: proc() {
 
     for offset < len(input) {
         rune := rl.GetCharPressed()
-        if rune == 0 do break
+        if rune == 0 {
+            break
+        }
 
         bytes, count := utf8.encode_rune(rune)
 

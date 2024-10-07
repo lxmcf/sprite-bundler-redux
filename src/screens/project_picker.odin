@@ -6,7 +6,7 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 
-import "bundler:core"
+import "../core"
 
 import mu "vendor:microui"
 import rl "vendor:raylib"
@@ -15,20 +15,22 @@ WINDOW_WIDTH :: 640
 WINDOW_HEIGHT :: 332
 
 @(private = "file")
-ProjectPickerState :: struct {
-    projects: [dynamic]ProjectListItem,
+Project_Picker_Context :: struct {
+    projects: [dynamic]Project_List_Item,
 }
 
 @(private = "file")
-state: ProjectPickerState
+ctx: Project_Picker_Context
 
-ProjectListItem :: struct {
+Project_List_Item :: struct {
     name:      string,
     directory: string,
     file:      string,
 }
 
-InitProjectPicker :: proc() {
+init_project_picker :: proc() {
+    rl.SetWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
+
     matches, err := filepath.glob("projects/*/*.lspp", context.temp_allocator)
     if err == .Syntax_Error {
         rl.TraceLog(.ERROR, "[JSON] Invalid JSON syntax")
@@ -53,82 +55,82 @@ InitProjectPicker :: proc() {
 
         root := json_data.(json.Object)
 
-        item: ProjectListItem = {
+        item: Project_List_Item = {
             file = strings.clone(match),
             name = strings.clone(root["name"].(json.String)),
         }
 
-        append(&state.projects, item)
+        append(&ctx.projects, item)
     }
 }
 
-UnloadProjectPicker :: proc() {
-    for project in state.projects {
+unload_project_picker :: proc() {
+    for project in ctx.projects {
         delete(project.name)
         delete(project.file)
     }
 
-    delete(state.projects)
+    delete(ctx.projects)
 }
 
-UpdateProjectPicker :: proc(project: ^core.Project) {
+update_project_picker :: proc(project: ^core.Project) {
     if rl.IsFileDropped() {
         files := rl.LoadDroppedFiles()
         defer rl.UnloadDroppedFiles(files)
 
         if files.count == 1 {
-            project^, _ = core.LoadProject(string(files.paths[0]))
+            project^, _ = core.load_project(string(files.paths[0]))
         }
     }
 
-    ctx := core.Begin()
+    mu_ctx := core.Begin()
     defer core.End()
 
-    rect: mu.Rect = {(rl.GetScreenWidth() / 2) - (WINDOW_WIDTH / 2), (rl.GetScreenHeight() / 2) - (WINDOW_HEIGHT / 2), WINDOW_WIDTH, WINDOW_HEIGHT}
+    rect: mu.Rect = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT}
 
     // NOTE: This is awful, maybe I should just remake raygui?
-    if mu.window(ctx, "Projects", rect, {.NO_RESIZE, .NO_CLOSE}) {
-        mu.layout_row(ctx, {-1}, 192)
-        mu.begin_panel(ctx, "load_project_panel", {.NO_SCROLL})
+    if mu.window(mu_ctx, "Projects", rect, {.NO_RESIZE, .NO_CLOSE}) {
+        mu.layout_row(mu_ctx, {-1}, 192)
+        mu.begin_panel(mu_ctx, "load_project_panel", {.NO_SCROLL})
 
-        container := mu.get_current_container(ctx)
+        container := mu.get_current_container(mu_ctx)
         label_width := container.rect.w - (mu.default_style.padding * 4) - 144
 
-        if len(state.projects) > 0 {
-            for project_item, index in state.projects {
-                mu.layout_row(ctx, {label_width, 72, 72})
-                mu.label(ctx, project_item.name)
+        if len(ctx.projects) > 0 {
+            for project_item, index in ctx.projects {
+                mu.layout_row(mu_ctx, {label_width, 72, 72})
+                mu.label(mu_ctx, project_item.name)
 
-                mu.push_id(ctx, uintptr(index))
-                if .SUBMIT in mu.button(ctx, "Load") {
-                    err: core.ProjectError
-                    project^, err = core.LoadProject(project_item.file)
+                mu.push_id(mu_ctx, uintptr(index))
+                if .SUBMIT in mu.button(mu_ctx, "Load") {
+                    err: core.Project_Error
+                    project^, err = core.load_project(project_item.file)
                 }
 
-                if .SUBMIT in mu.button(ctx, "Delete") {
+                if .SUBMIT in mu.button(mu_ctx, "Delete") {
                     rl.TraceLog(.WARNING, "[PROJECT] Deletion not yet added!")
                 }
 
-                mu.pop_id(ctx)
+                mu.pop_id(mu_ctx)
             }
         } else {
-            mu.layout_row(ctx, {-1})
-            mu.label(ctx, "No projects found!")
+            mu.layout_row(mu_ctx, {-1})
+            mu.label(mu_ctx, "No projects found!")
         }
 
-        mu.end_panel(ctx)
+        mu.end_panel(mu_ctx)
 
-        mu.layout_row(ctx, {-1}, -1)
-        mu.begin_panel(ctx, "new_project_panel", {.NO_SCROLL})
+        mu.layout_row(mu_ctx, {-1}, -1)
+        mu.begin_panel(mu_ctx, "new_project_panel", {.NO_SCROLL})
 
-        mu.layout_row(ctx, {-1, -1}, -1)
+        mu.layout_row(mu_ctx, {-1, -1}, -1)
 
         @(static)
         copy_files, auto_center: bool
 
-        mu.layout_row(ctx, {128, 128})
-        mu.checkbox(ctx, "Copy Sprite Files", &copy_files)
-        mu.checkbox(ctx, "Auto Center Origin", &auto_center)
+        mu.layout_row(mu_ctx, {128, 128})
+        mu.checkbox(mu_ctx, "Copy Sprite Files", &copy_files)
+        mu.checkbox(mu_ctx, "Auto Center Origin", &auto_center)
 
         @(static)
         atlas_size: mu.Real
@@ -138,28 +140,28 @@ UpdateProjectPicker :: proc(project: ^core.Project) {
 
         @(static)
         project_name_length: int
-        mu.label(ctx, "Atlas Size")
-        mu.slider(ctx, &atlas_size, 512, 8192, 512)
+        mu.label(mu_ctx, "Atlas Size")
+        mu.slider(mu_ctx, &atlas_size, 512, 8192, 512)
 
-        mu.label(ctx, "Project Name")
-        mu.textbox(ctx, project_name_buffer[:], &project_name_length)
+        mu.label(mu_ctx, "Project Name")
+        mu.textbox(mu_ctx, project_name_buffer[:], &project_name_length)
 
-        mu.layout_row(ctx, {-1})
-        if .SUBMIT in mu.button(ctx, "Create Project") {
+        mu.layout_row(mu_ctx, {-1})
+        if .SUBMIT in mu.button(mu_ctx, "Create Project") {
             project_name := string(project_name_buffer[:project_name_length])
 
-            err := core.CreateNewProject(project_name, int(atlas_size), copy_files, auto_center)
+            err := core.create_new_project(project_name, int(atlas_size), copy_files, auto_center)
 
             if err == .None {
                 project_file_path := fmt.tprint("projects", project_name, "project.lspp", sep = filepath.SEPARATOR_STRING)
 
                 if os.is_file(project_file_path) {
-                    project^, err = core.LoadProject(project_file_path)
+                    project^, err = core.load_project(project_file_path)
                 }
             }
         }
-        mu.end_panel(ctx)
+        mu.end_panel(mu_ctx)
     }
 }
 
-DrawProjectPicker :: proc() {}
+draw_project_picker :: proc() {}

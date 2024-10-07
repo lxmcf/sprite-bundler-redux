@@ -1,150 +1,123 @@
 package main
 
-import "core:fmt"
-import "core:mem"
 import "core:os"
-
-_ :: fmt
-_ :: mem
-
 import rl "vendor:raylib"
 
-import "bundler:core"
-import "bundler:screens"
+import "core"
+import db "debug"
+import "screens"
+
+_ :: db
 
 FPS_MINIMUM :: 60
 WINDOW_WIDTH :: 1280
 WINDOW_HEIGHT :: 720
 WINDOW_TITLE :: "Sprite Packer"
 
-TEST_PROJECT :: "Hello World"
-
-ApplicationScreen :: enum {
-    PROJECT_PICKER,
-    EDITOR,
-}
-
-DebugDrawFPS :: proc() {
-    DEBUG_FONT_SIZE :: 20
-
-    @(static)
-    debug_show_fps: bool
-
-    if rl.IsKeyPressed(.GRAVE) do debug_show_fps = !debug_show_fps
-
-    if debug_show_fps {
-        current_fps := rl.TextFormat("%d FPS", rl.GetFPS())
-        text_width := rl.MeasureText(current_fps, DEBUG_FONT_SIZE)
-        text_colour := rl.GetFPS() < FPS_MINIMUM ? rl.ORANGE : rl.GREEN
-
-        rl.DrawRectangle(0, 0, text_width + 16, 32, rl.Fade(rl.BLACK, 0.5))
-        rl.DrawText(current_fps, 8, 8, DEBUG_FONT_SIZE, text_colour)
-    }
+Application_Screen :: enum {
+    Project_Picker,
+    Editor,
 }
 
 main :: proc() {
     when ODIN_DEBUG {
-        track: mem.Tracking_Allocator
-        mem.tracking_allocator_init(&track, context.allocator)
-        context.allocator = mem.tracking_allocator(&track)
-
-        defer {
-            if len(track.allocation_map) > 0 {
-                fmt.eprintfln("<------ %v leaked allocations ------>", len(track.allocation_map))
-                for _, entry in track.allocation_map do fmt.eprintfln("%v leaked %v bytes", entry.location, entry.size)
-            }
-
-            if len(track.bad_free_array) > 0 {
-                fmt.eprintfln("<------ %v bad frees          ------>", len(track.bad_free_array))
-                for entry in track.bad_free_array do fmt.eprintfln("%v bad free", entry.location)
-            }
-
-            mem.tracking_allocator_destroy(&track)
-        }
+        context.allocator = db.init_allocator()
+        defer db.unload_allocator()
     }
 
+    rl.SetTraceLogLevel(.DEBUG when ODIN_DEBUG else .NONE)
     rl.InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
     defer rl.CloseWindow()
 
-    rl.SetWindowMinSize(640, 360)
+    // rl.SetWindowMinSize(640, 360)
     rl.SetWindowState({.WINDOW_RESIZABLE})
     rl.SetExitKey(.KEY_NULL)
-
-    rl.SetTraceLogLevel(.DEBUG when ODIN_DEBUG else .NONE)
 
     // Set max framerate without vsync
     max_fps := rl.GetMonitorRefreshRate(rl.GetCurrentMonitor())
     rl.SetTargetFPS(max_fps <= 0 ? FPS_MINIMUM : max_fps)
 
-    if !os.is_dir("projects") do os.make_directory("projects")
+    if !os.is_dir("projects") {
+        os.make_directory("projects")
+    }
 
-    current_screen := ApplicationScreen.PROJECT_PICKER
+    current_screen := Application_Screen.Project_Picker
     current_project: core.Project
-    defer core.UnloadProject(&current_project)
+    defer core.unload_project(&current_project)
 
-    screens.InitProjectPicker()
-    defer UnloadCurrentScreen(current_screen)
+    init_current_screen(current_screen)
+    defer unload_current_screen(current_screen)
 
     core.Init()
     defer core.Unload()
 
     for !rl.WindowShouldClose() {
-        UpdateCurrentScreen(current_screen, &current_project)
+        update_current_screen(current_screen, &current_project)
 
         rl.BeginDrawing()
         defer rl.EndDrawing()
 
         rl.ClearBackground(rl.DARKGRAY)
-        DrawCurrentScreen(current_screen, &current_project)
+        draw_current_screen(current_screen, &current_project)
 
         when ODIN_DEBUG {
-            DebugDrawFPS()
+            db.draw_fps()
         }
 
-        if current_project.is_loaded && current_screen != .EDITOR {
-            UnloadCurrentScreen(current_screen)
-            current_screen = .EDITOR
+        if current_project.is_loaded && current_screen != .Editor {
+            unload_current_screen(current_screen)
+            current_screen = .Editor
 
-            screens.InitEditor(&current_project)
+            screens.init_editor()
         }
 
-        if !current_project.is_loaded && current_screen != .PROJECT_PICKER {
-            UnloadCurrentScreen(current_screen)
-            current_screen = .PROJECT_PICKER
+        if !current_project.is_loaded && current_screen != .Project_Picker {
+            unload_current_screen(current_screen)
+            current_screen = .Project_Picker
 
-            screens.InitProjectPicker()
+            screens.init_project_picker()
         }
 
         free_all(context.temp_allocator)
     }
 }
 
-UpdateCurrentScreen :: proc(screen: ApplicationScreen, project: ^core.Project) {
+init_current_screen :: proc(screen: Application_Screen) {
     switch screen {
-    case .EDITOR:
-        screens.UpdateEditor(project)
+    case .Editor:
+        screens.init_editor()
 
-    case .PROJECT_PICKER:
-        screens.UpdateProjectPicker(project)
+    case .Project_Picker:
+        screens.init_project_picker()
     }
 }
 
-DrawCurrentScreen :: proc(screen: ApplicationScreen, project: ^core.Project) {
+update_current_screen :: proc(screen: Application_Screen, project: ^core.Project) {
     switch screen {
-    case .EDITOR:
-        screens.DrawEditor(project)
+    case .Editor:
+        screens.update_editor(project)
 
-    case .PROJECT_PICKER:
-        screens.DrawProjectPicker()
+    case .Project_Picker:
+        screens.update_project_picker(project)
     }
 }
 
-UnloadCurrentScreen :: proc(screen: ApplicationScreen) {
+draw_current_screen :: proc(screen: Application_Screen, project: ^core.Project) {
     switch screen {
-    case .EDITOR:
-        screens.UnloadEditor()
+    case .Editor:
+        screens.draw_editor(project)
 
-    case .PROJECT_PICKER:
-        screens.UnloadProjectPicker()
+    case .Project_Picker:
+        screens.draw_project_picker()
+    }
+}
+
+unload_current_screen :: proc(screen: Application_Screen) {
+    switch screen {
+    case .Editor:
+        screens.unload_editor()
+
+    case .Project_Picker:
+        screens.unload_project_picker()
     }
 }

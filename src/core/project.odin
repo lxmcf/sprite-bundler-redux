@@ -35,10 +35,10 @@ Project :: struct {
 }
 
 @(private)
-WriteableProject :: struct {
+Writeable_Project :: struct {
     version: int,
     name:    string,
-    atlas:   [dynamic]WriteableAtlas,
+    atlas:   [dynamic]Writeable_Atlas,
     config:  struct {
         assets_dir:  string,
         copy_files:  bool,
@@ -47,7 +47,7 @@ WriteableProject :: struct {
     },
 }
 
-ProjectError :: enum {
+Project_Error :: enum {
     None,
     Invalid_File,
     Invalid_Data,
@@ -58,22 +58,22 @@ ProjectError :: enum {
 }
 
 @(private)
-ProjectToWriteable :: proc(project: Project) -> WriteableProject {
-    writable: WriteableProject = {
+project_to_writeable :: proc(project: Project) -> Writeable_Project {
+    writable: Writeable_Project = {
         version = project.version,
         name = project.name,
         config = {assets_dir = project.config.assets_dir, copy_files = project.config.copy_files, auto_center = project.config.auto_center, atlas_size = project.config.atlas_size},
     }
 
     for atlas in project.atlas {
-        append(&writable.atlas, ToWriteable(atlas))
+        append(&writable.atlas, to_writeable(atlas))
     }
 
     return writable
 }
 
 @(private)
-ProjectToReadable :: proc(project: WriteableProject) -> Project {
+project_to_readable :: proc(project: Writeable_Project) -> Project {
     readable: Project = {
         name = strings.clone(project.name),
         version = project.version,
@@ -86,27 +86,32 @@ ProjectToReadable :: proc(project: WriteableProject) -> Project {
     readable.background = rl.LoadTextureFromImage(background_image)
 
     for atlas in project.atlas {
-        append(&readable.atlas, ToReadable(atlas))
+        append(&readable.atlas, to_readable(atlas))
     }
 
     return readable
 }
 
 @(private)
-UnloadWriteableProject :: proc(project: ^WriteableProject) {
-    for &atlas in project.atlas do UnloadWriteable(&atlas)
+unload_writeable_project :: proc(project: ^Writeable_Project) {
+    for &atlas in project.atlas {
+        unload_writeable(&atlas)
+    }
 
     delete(project.atlas)
 }
 
-CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center: bool) -> ProjectError {
+create_new_project :: proc(name: string, atlas_size: int, copy_files, auto_center: bool) -> Project_Error {
     project_directory := fmt.tprint(DEFAULT_PROJECT_DIRECTORY, name, sep = filepath.SEPARATOR_STRING)
     project_file := fmt.tprint(project_directory, DEFAULT_PROJECT_FILENAME, sep = filepath.SEPARATOR_STRING)
     project_assets := fmt.tprint(project_directory, DEFAULT_PROJECT_ASSETS, sep = filepath.SEPARATOR_STRING)
 
     os.make_directory(project_directory)
     os.make_directory(project_assets)
-    if os.is_file(project_file) do return .Project_Exists
+
+    if os.is_file(project_file) {
+        return .Project_Exists
+    }
 
     project_to_create: Project = {
         version = CURRENT_PROJECT_VERSION,
@@ -122,17 +127,17 @@ CreateNewProject :: proc(name: string, atlas_size: int, copy_files, auto_center:
     append(&project_to_create.atlas, atlas_to_create)
     defer delete(project_to_create.atlas)
 
-    return WriteProject(&project_to_create)
+    return write_project(&project_to_create)
 }
 
-LoadProject :: proc(filename: string) -> (Project, ProjectError) {
-    loaded_project: WriteableProject
+load_project :: proc(filename: string) -> (Project, Project_Error) {
+    loaded_project: Writeable_Project
     new_project: Project
 
     if file_data, ok := os.read_entire_file(filename, context.temp_allocator); ok {
         json.unmarshal(file_data, &loaded_project, allocator = context.temp_allocator)
 
-        new_project = ToReadable(loaded_project)
+        new_project = to_readable(loaded_project)
 
         new_project.working_directory = strings.concatenate({filepath.dir(filename, context.temp_allocator), filepath.SEPARATOR_STRING})
 
@@ -159,7 +164,7 @@ LoadProject :: proc(filename: string) -> (Project, ProjectError) {
                 }
             }
 
-            GenerateAtlas(&atlas)
+            generate_atlas(&atlas)
         }
     } else {
         return new_project, .Invalid_Data
@@ -172,7 +177,7 @@ LoadProject :: proc(filename: string) -> (Project, ProjectError) {
     return new_project, .None
 }
 
-UnloadProject :: proc(project: ^Project) {
+unload_project :: proc(project: ^Project) {
     delete(project.name)
     delete(project.file)
     delete(project.config.assets_dir)
@@ -204,11 +209,13 @@ UnloadProject :: proc(project: ^Project) {
     project.is_loaded = false
 }
 
-WriteProject :: proc(project: ^Project) -> ProjectError {
-    if os.is_file(project.file) do os.rename(project.file, strings.concatenate({project.file, ".bkp"}, context.temp_allocator))
+write_project :: proc(project: ^Project) -> Project_Error {
+    if os.is_file(project.file) {
+        os.rename(project.file, strings.concatenate({project.file, ".bkp"}, context.temp_allocator))
+    }
 
-    project_to_write := ToWriteable(project^)
-    defer UnloadWriteable(&project_to_write)
+    project_to_write := to_writeable(project^)
+    defer unload_writeable(&project_to_write)
 
     options: json.Marshal_Options = {
         use_spaces = true,

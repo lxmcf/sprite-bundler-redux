@@ -12,10 +12,10 @@ import "core:strings"
 import rl "vendor:raylib"
 import stb "vendor:stb/rect_pack"
 
-import "bundler:core"
+import "../core"
 
 @(private = "file")
-EditorState :: struct {
+Editor_Context :: struct {
     camera:                rl.Camera2D,
     cursor:                rl.MouseCursor,
 
@@ -44,200 +44,235 @@ EditorState :: struct {
 }
 
 @(private = "file")
-state: EditorState
+ctx: Editor_Context
 
 TOOLBAR_HEIGHT :: 32
 
-InitEditor :: proc(project: ^core.Project) {
-    state.camera.zoom = 0.5
+init_editor :: proc() {
+    rl.SetWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
+    rl.SetWindowState({.WINDOW_MAXIMIZED})
 
-    state.current_atlas = &project.atlas[0]
-    state.selected_sprite = nil
-    state.selected_sprite_index = -1
+    ctx.camera.zoom = 0.5
+
+    ctx.current_atlas = nil
+    ctx.selected_sprite = nil
+    ctx.selected_sprite_index = -1
 }
 
-UnloadEditor :: proc() {}
+unload_editor :: proc() {}
 
-UpdateEditor :: proc(project: ^core.Project) {
-    HandleEditorActions(project)
+update_editor :: proc(project: ^core.Project) {
+    if ctx.current_atlas == nil {
+        ctx.current_atlas = &project.atlas[0]
+    }
 
-    state.cursor = .DEFAULT
+    handle_editor_actions(project)
 
-    state.is_dialog_open = state.is_atlas_rename || state.is_sprite_rename
+    ctx.cursor = .DEFAULT
 
-    UpdateCamera()
+    ctx.is_dialog_open = ctx.is_atlas_rename || ctx.is_sprite_rename
 
-    HandleShortcuts(project)
-    HandleDroppedFiles(project)
+    update_camera()
 
-    if rl.GetMouseY() < i32(TOOLBAR_HEIGHT) || state.is_dialog_open {
+    handle_shortcuts(project)
+    handle_dropped_files(project)
+
+    if rl.GetMouseY() < i32(TOOLBAR_HEIGHT) || ctx.is_dialog_open {
         rl.SetMouseCursor(.DEFAULT)
         return
     }
 
-    mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
-    for &sprite, index in state.current_atlas.sprites {
+    mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), ctx.camera)
+    for &sprite, index in ctx.current_atlas.sprites {
         if rl.CheckCollisionPointRec(mouse_position, sprite.source) {
-            state.cursor = .POINTING_HAND
+            ctx.cursor = .POINTING_HAND
 
             if rl.IsMouseButtonReleased(.LEFT) {
-                state.selected_sprite = &sprite
-                state.selected_sprite_index = index
+                ctx.selected_sprite = &sprite
+                ctx.selected_sprite_index = index
             }
             break
         }
     }
 
-    if state.selected_sprite != nil {
-        if state.should_edit_origin {
-            offset := mouse_position - {state.selected_sprite.source.x, state.selected_sprite.source.y}
+    if ctx.selected_sprite != nil {
+        if ctx.should_edit_origin {
+            offset := mouse_position - {ctx.selected_sprite.source.x, ctx.selected_sprite.source.y}
 
-            offset.x = clamp(math.round(offset.x), 0, state.selected_sprite.source.width)
-            offset.y = clamp(math.round(offset.y), 0, state.selected_sprite.source.height)
+            offset.x = clamp(math.round(offset.x), 0, ctx.selected_sprite.source.width)
+            offset.y = clamp(math.round(offset.y), 0, ctx.selected_sprite.source.height)
 
-            state.selected_sprite.origin = offset
+            ctx.selected_sprite.origin = offset
 
-            state.cursor = .RESIZE_ALL
+            ctx.cursor = .RESIZE_ALL
 
             if rl.IsMouseButtonPressed(.LEFT) {
-                state.should_edit_origin = false
+                ctx.should_edit_origin = false
             }
         } else {
             if rl.IsMouseButtonReleased(.LEFT) {
-                if !rl.CheckCollisionPointRec(mouse_position, state.selected_sprite.source) {
-                    state.selected_sprite = nil
-                    state.selected_sprite_index = -1
+                if !rl.CheckCollisionPointRec(mouse_position, ctx.selected_sprite.source) {
+                    ctx.selected_sprite = nil
+                    ctx.selected_sprite_index = -1
                 }
             }
         }
     }
 
-    rl.SetMouseCursor(state.cursor)
+    rl.SetMouseCursor(ctx.cursor)
 }
 
-DrawEditor :: proc(project: ^core.Project) {
-    DrawMainEditor(project)
-    DrawEditorGui(project)
+draw_editor :: proc(project: ^core.Project) {
+    draw_main_editor(project)
+    draw_editor_gui(project)
 }
 
 @(private = "file")
-UpdateCamera :: proc() {
-    if state.is_dialog_open do return
+update_camera :: proc() {
+    if ctx.is_dialog_open {
+        return
+    }
 
     if rl.IsMouseButtonDown(.MIDDLE) || rl.IsKeyDown(.LEFT_ALT) {
         delta := rl.GetMouseDelta()
 
-        delta *= -1.0 / state.camera.zoom
-        state.camera.target += delta
+        delta *= -1.0 / ctx.camera.zoom
+        ctx.camera.target += delta
     }
 
     mouse_wheel := rl.GetMouseWheelMove()
     if mouse_wheel != 0 && !rl.IsMouseButtonDown(.MIDDLE) {
-        mouse_world_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), state.camera)
+        mouse_world_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), ctx.camera)
 
-        state.camera.offset = rl.GetMousePosition()
-        state.camera.target = mouse_world_position
+        ctx.camera.offset = rl.GetMousePosition()
+        ctx.camera.target = mouse_world_position
 
         scale_factor := 1 + (0.25 * abs(mouse_wheel))
-        if mouse_wheel < 0 do scale_factor = 1.0 / scale_factor
+        if mouse_wheel < 0 {
+            scale_factor = 1.0 / scale_factor
+        }
 
-        state.camera.zoom = clamp(state.camera.zoom * scale_factor, 0.125, 64)
+        ctx.camera.zoom = clamp(ctx.camera.zoom * scale_factor, 0.125, 64)
     }
 }
 
 // TODO: Move to an event queue
 @(private = "file")
-HandleEditorActions :: proc(project: ^core.Project) {
-    if state.save_project do core.WriteProject(project)
-    if state.export_project do core.ExportBundle(project^)
-    if state.create_new_atlas do core.CreateNewAtlas(project, "Blank Atlas")
+handle_editor_actions :: proc(project: ^core.Project) {
+    if ctx.save_project {
+        core.write_project(project)
+    }
 
-    if state.delete_current_atlas {
-        core.DeleteAtlas(project, state.current_atlas_index)
+    if ctx.export_project {
+        core.export_bundle(project^)
+    }
+
+    if ctx.create_new_atlas {
+        core.create_new_atlas(project, "Blank Atlas")
+    }
+
+    if ctx.delete_current_atlas {
+        core.delete_atlas(project, ctx.current_atlas_index)
 
         if len(project.atlas) == 0 {
-            core.CreateNewAtlas(project, "Blank Atlas")
+            core.create_new_atlas(project, "Blank Atlas")
         }
 
-        state.current_atlas_index = clamp(state.current_atlas_index, 0, len(project.atlas) - 1)
+        ctx.current_atlas_index = clamp(ctx.current_atlas_index, 0, len(project.atlas) - 1)
     }
 
-    if state.delete_current_sprite {
-        core.DeleteSprite(project, state.selected_sprite)
+    if ctx.delete_current_sprite {
+        core.delete_sprite(project, ctx.selected_sprite)
 
-        unordered_remove(&state.current_atlas.sprites, state.selected_sprite_index)
+        unordered_remove(&ctx.current_atlas.sprites, ctx.selected_sprite_index)
 
-        PackSprites(project)
-        core.GenerateAtlas(state.current_atlas)
+        pack_sprites(project)
+        core.generate_atlas(ctx.current_atlas)
 
-        state.selected_sprite = nil
+        ctx.selected_sprite = nil
     }
 
-    state.export_project = false
-    state.save_project = false
-    state.create_new_atlas = false
-    state.delete_current_atlas = false
-    state.delete_current_sprite = false
+    ctx.export_project = false
+    ctx.save_project = false
+    ctx.create_new_atlas = false
+    ctx.delete_current_atlas = false
+    ctx.delete_current_sprite = false
 }
 
 @(private = "file")
-HandleShortcuts :: proc(project: ^core.Project) {
+handle_shortcuts :: proc(project: ^core.Project) {
     // Centre camera
-    if rl.IsKeyReleased(.Z) && !state.should_edit_origin {
+    if rl.IsKeyReleased(.Z) && !ctx.should_edit_origin {
         screen: rl.Vector2 = {f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight())}
 
-        state.camera.offset = screen / 2
-        state.camera.target = {f32(project.config.atlas_size), f32(project.config.atlas_size)} / 2
+        ctx.camera.offset = screen / 2
+        ctx.camera.target = {f32(project.config.atlas_size), f32(project.config.atlas_size)} / 2
 
-        state.camera.zoom = 0.5
+        ctx.camera.zoom = 0.5
     }
 
     // Centre sprite origin
-    if rl.IsKeyReleased(.Z) && state.should_edit_origin {
-        state.selected_sprite.origin = {state.selected_sprite.source.width, state.selected_sprite.source.height} / 2
+    if rl.IsKeyReleased(.Z) && ctx.should_edit_origin {
+        ctx.selected_sprite.origin = {ctx.selected_sprite.source.width, ctx.selected_sprite.source.height} / 2
 
-        state.should_edit_origin = false
+        ctx.should_edit_origin = false
     }
 
-    if rl.IsKeyPressed(.V) do state.should_edit_origin = !state.should_edit_origin
+    if rl.IsKeyPressed(.V) {
+        ctx.should_edit_origin = !ctx.should_edit_origin
+    }
 
     if rl.IsKeyDown(.LEFT_CONTROL) {
-        if rl.IsKeyPressed(.S) do state.save_project = true
-        if rl.IsKeyPressed(.E) do state.export_project = true
-        if rl.IsKeyPressed(.N) do state.create_new_atlas = true
+        if rl.IsKeyPressed(.S) {
+            ctx.save_project = true
+        }
+
+        if rl.IsKeyPressed(.E) {
+            ctx.export_project = true
+        }
+
+        if rl.IsKeyPressed(.N) {
+            ctx.create_new_atlas = true
+        }
 
         if rl.IsKeyPressed(.Y) {
-            if state.selected_sprite != nil {
-                state.delete_current_sprite = true
+            if ctx.selected_sprite != nil {
+                ctx.delete_current_sprite = true
             } else {
-                state.delete_current_atlas = true
+                ctx.delete_current_atlas = true
             }
         }
 
         if rl.IsKeyPressed(.R) {
-            if state.selected_sprite != nil {
-                for i in 0 ..< len(state.selected_sprite.name) do state.atlas_name_buffer[i] = state.selected_sprite.name[i]
-                state.is_sprite_rename = true
+            if ctx.selected_sprite != nil {
+                for i in 0 ..< len(ctx.selected_sprite.name) {
+                    ctx.atlas_name_buffer[i] = ctx.selected_sprite.name[i]
+                }
+
+                ctx.is_sprite_rename = true
             } else {
-                for i in 0 ..< len(state.current_atlas.name) do state.atlas_name_buffer[i] = state.current_atlas.name[i]
-                state.is_atlas_rename = true
+                for i in 0 ..< len(ctx.current_atlas.name) {
+                    ctx.atlas_name_buffer[i] = ctx.current_atlas.name[i]
+                }
+
+                ctx.is_atlas_rename = true
             }
         }
 
         change_atlas := int(rl.IsKeyPressed(.RIGHT_BRACKET)) - int(rl.IsKeyPressed(.LEFT_BRACKET))
         if change_atlas != 0 {
-            state.current_atlas_index = clamp(state.current_atlas_index + change_atlas, 0, len(project.atlas) - 1)
-            state.current_atlas = &project.atlas[state.current_atlas_index]
+            ctx.current_atlas_index = clamp(ctx.current_atlas_index + change_atlas, 0, len(project.atlas) - 1)
+            ctx.current_atlas = &project.atlas[ctx.current_atlas_index]
         }
 
         if rl.IsKeyPressed(.P) {
-            core.ImportBundle("bundle.lspx")
+            core.import_bundle("bundle.lspx")
         }
     }
 }
 
 @(private = "file")
-HandleDroppedFiles :: proc(project: ^core.Project) {
+handle_dropped_files :: proc(project: ^core.Project) {
     if rl.IsFileDropped() {
         files := rl.LoadDroppedFiles()
         defer rl.UnloadDroppedFiles(files)
@@ -246,7 +281,9 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
             for i in 0 ..< files.count {
                 path := files.paths[i]
 
-                if !rl.IsFileExtension(path, ".png") do continue
+                if !rl.IsFileExtension(path, ".png") {
+                    continue
+                }
 
                 image := rl.LoadImage(path)
                 name := strings.clone_from_cstring(rl.GetFileNameWithoutExt(path))
@@ -271,7 +308,7 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
                 sprite: core.Sprite = {
                     name   = name,
                     file   = strings.clone_from_cstring(path),
-                    atlas  = strings.clone(state.current_atlas.name),
+                    atlas  = strings.clone(ctx.current_atlas.name),
                     image  = image,
                     source = {0, 0, f32(image.width), f32(image.height)},
                 }
@@ -280,12 +317,12 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
                     sprite.origin = {sprite.source.width, sprite.source.height} / 2
                 }
 
-                append(&state.current_atlas.sprites, sprite)
+                append(&ctx.current_atlas.sprites, sprite)
             }
 
-            PackSprites(project)
+            pack_sprites(project)
 
-            core.GenerateAtlas(state.current_atlas)
+            core.generate_atlas(ctx.current_atlas)
         } else {
             rl.TraceLog(.ERROR, "[FILE] Did not find any files to sort!")
         }
@@ -293,7 +330,7 @@ HandleDroppedFiles :: proc(project: ^core.Project) {
 }
 
 @(private = "file")
-PackSprites :: proc(project: ^core.Project) {
+pack_sprites :: proc(project: ^core.Project) {
     atlas_size := i32(project.config.atlas_size)
 
     stb_context: stb.Context
@@ -303,7 +340,7 @@ PackSprites :: proc(project: ^core.Project) {
 
     stb.init_target(&stb_context, atlas_size, atlas_size, raw_data(stb_nodes[:]), atlas_size)
 
-    for sprite, index in state.current_atlas.sprites {
+    for sprite, index in ctx.current_atlas.sprites {
         append(&stb_rects, stb.Rect{id = i32(index), w = stb.Coord(sprite.image.width), h = stb.Coord(sprite.image.height)})
     }
 
@@ -319,55 +356,55 @@ PackSprites :: proc(project: ^core.Project) {
             continue
         }
 
-        state.current_atlas.sprites[rect.id].source.x = f32(rect.x)
-        state.current_atlas.sprites[rect.id].source.y = f32(rect.y)
+        ctx.current_atlas.sprites[rect.id].source.x = f32(rect.x)
+        ctx.current_atlas.sprites[rect.id].source.y = f32(rect.y)
     }
 }
 
 @(private = "file")
-DrawMainEditor :: proc(project: ^core.Project) {
-    rl.BeginMode2D(state.camera)
+draw_main_editor :: proc(project: ^core.Project) {
+    rl.BeginMode2D(ctx.camera)
     defer rl.EndMode2D()
 
     rl.DrawTextureV(project.background, {}, rl.WHITE)
-    rl.DrawTextureV(state.current_atlas.texture, {}, rl.WHITE)
+    rl.DrawTextureV(ctx.current_atlas.texture, {}, rl.WHITE)
 
-    if state.selected_sprite != nil {
+    if ctx.selected_sprite != nil {
         rl.DrawRectangle(0, 0, i32(project.config.atlas_size), i32(project.config.atlas_size), rl.Fade(rl.BLACK, 0.5))
-        rl.DrawTextureRec(project.background, state.selected_sprite.source, {state.selected_sprite.source.x, state.selected_sprite.source.y}, rl.WHITE)
+        rl.DrawTextureRec(project.background, ctx.selected_sprite.source, {ctx.selected_sprite.source.x, ctx.selected_sprite.source.y}, rl.WHITE)
 
-        rl.DrawTextureRec(state.current_atlas.texture, state.selected_sprite.source, {state.selected_sprite.source.x, state.selected_sprite.source.y}, rl.WHITE)
+        rl.DrawTextureRec(ctx.current_atlas.texture, ctx.selected_sprite.source, {ctx.selected_sprite.source.x, ctx.selected_sprite.source.y}, rl.WHITE)
     }
 }
 
 @(private = "file")
-DrawEditorGui :: proc(project: ^core.Project) {
+draw_editor_gui :: proc(project: ^core.Project) {
     should_regenerate_atlas: bool
-    rl.DrawTextEx(rl.GetFontDefault(), strings.clone_to_cstring(state.current_atlas.name, context.temp_allocator), rl.GetWorldToScreen2D({}, state.camera) + {0, -48}, 40, 1, rl.WHITE)
+    rl.DrawTextEx(rl.GetFontDefault(), strings.clone_to_cstring(ctx.current_atlas.name, context.temp_allocator), rl.GetWorldToScreen2D({}, ctx.camera) + {0, -48}, 40, 1, rl.WHITE)
 
-    if state.selected_sprite != nil {
-        position: rl.Vector2 = {state.selected_sprite.source.x, state.selected_sprite.source.y}
-        adjusted_position: rl.Vector2 = rl.GetWorldToScreen2D(position, state.camera)
+    if ctx.selected_sprite != nil {
+        position: rl.Vector2 = {ctx.selected_sprite.source.x, ctx.selected_sprite.source.y}
+        adjusted_position: rl.Vector2 = rl.GetWorldToScreen2D(position, ctx.camera)
 
-        scaled_rect_size: rl.Vector2 = {state.selected_sprite.source.width, state.selected_sprite.source.height} * state.camera.zoom
+        scaled_rect_size: rl.Vector2 = {ctx.selected_sprite.source.width, ctx.selected_sprite.source.height} * ctx.camera.zoom
 
         rl.DrawRectangleLinesEx({adjusted_position.x, adjusted_position.y, scaled_rect_size.x, scaled_rect_size.y}, 1, rl.RED)
 
-        position_origin := rl.GetWorldToScreen2D(position + state.selected_sprite.origin, state.camera)
+        position_origin := rl.GetWorldToScreen2D(position + ctx.selected_sprite.origin, ctx.camera)
         rl.DrawCircleLinesV(position_origin, 4, rl.RED)
 
-        if !rl.Vector2Equals(state.selected_sprite.origin, {}) || state.should_edit_origin {
+        if !rl.Vector2Equals(ctx.selected_sprite.origin, {}) || ctx.should_edit_origin {
             rl.DrawLineV({adjusted_position.x, position_origin.y}, {adjusted_position.x + scaled_rect_size.x, position_origin.y}, rl.Fade(rl.RED, 0.5))
             rl.DrawLineV({position_origin.x, adjusted_position.y}, {position_origin.x, adjusted_position.y + scaled_rect_size.y}, rl.Fade(rl.RED, 0.5))
         }
 
-        sprite_name := strings.clone_to_cstring(state.selected_sprite.name, context.temp_allocator)
+        sprite_name := strings.clone_to_cstring(ctx.selected_sprite.name, context.temp_allocator)
 
-        position += {0, state.selected_sprite.source.height}
-        text_position := rl.GetWorldToScreen2D(position, state.camera)
+        position += {0, ctx.selected_sprite.source.height}
+        text_position := rl.GetWorldToScreen2D(position, ctx.camera)
         text_size := rl.MeasureTextEx(rl.GetFontDefault(), sprite_name, 30, 1) + 4
 
-        text_size.x = max(text_size.x, state.selected_sprite.source.width * state.camera.zoom)
+        text_size.x = max(text_size.x, ctx.selected_sprite.source.width * ctx.camera.zoom)
 
         rl.DrawRectangleV(text_position, text_size, rl.Fade(rl.BLACK, 0.5))
         rl.DrawTextEx(rl.GetFontDefault(), sprite_name, text_position + 2, 30, 1, rl.WHITE)
@@ -377,121 +414,150 @@ DrawEditorGui :: proc(project: ^core.Project) {
     rl.GuiPanel({0, 0, f32(rl.GetRenderWidth()), 32}, nil)
 
     rl.GuiSetTooltip("Save Project [CTRL + S]")
-    if rl.GuiButton({4, 4, 24, 24}, "#2#") do state.save_project = true
+    if rl.GuiButton({4, 4, 24, 24}, "#2#") {
+        ctx.save_project = true
+    }
 
     rl.GuiSetTooltip("Export Project [CTRL + E]")
-    if rl.GuiButton({32, 4, 24, 24}, "#7#") do state.export_project = true
+    if rl.GuiButton({32, 4, 24, 24}, "#7#") {
+        ctx.export_project = true
+    }
 
-    if state.selected_sprite != nil {
+    if ctx.selected_sprite != nil {
         rl.GuiSetTooltip("Rename Sprite [CTRL + R]")
         if rl.GuiButton({60, 4, 24, 24}, "#30#") {
-            for i in 0 ..< len(state.selected_sprite.name) do state.sprite_name_buffer[i] = state.selected_sprite.name[i]
-            state.is_sprite_rename = true
+            for i in 0 ..< len(ctx.selected_sprite.name) {
+                ctx.sprite_name_buffer[i] = ctx.selected_sprite.name[i]
+            }
+
+            ctx.is_sprite_rename = true
         }
 
         rl.GuiSetTooltip("Set Origin Point [V]")
-        if rl.GuiButton({88, 4, 24, 24}, "#50#") do state.should_edit_origin = true
+        if rl.GuiButton({88, 4, 24, 24}, "#50#") {
+            ctx.should_edit_origin = true
+        }
 
         rl.GuiSetTooltip("Rotate Sprite 90 Degrees")
         if rl.GuiButton({116, 4, 24, 24}, "#76#") {
-            rl.ImageRotateCW(&state.selected_sprite.image)
-            state.selected_sprite.source.width = f32(state.selected_sprite.image.width)
-            state.selected_sprite.source.height = f32(state.selected_sprite.image.height)
+            rl.ImageRotateCW(&ctx.selected_sprite.image)
+            ctx.selected_sprite.source.width = f32(ctx.selected_sprite.image.width)
+            ctx.selected_sprite.source.height = f32(ctx.selected_sprite.image.height)
 
             // TODO: Rotate origin point
-            state.selected_sprite.origin = {}
+            ctx.selected_sprite.origin = {}
             should_regenerate_atlas = true
         }
 
         rl.GuiSetTooltip("Flip Sprite Horizontally")
         if rl.GuiButton({144, 4, 24, 24}, "#40#") {
-            rl.ImageFlipHorizontal(&state.selected_sprite.image)
+            rl.ImageFlipHorizontal(&ctx.selected_sprite.image)
 
             should_regenerate_atlas = true
         }
 
         rl.GuiSetTooltip("Flip Sprite Vertically")
         if rl.GuiButton({172, 4, 24, 24}, "#41#") {
-            rl.ImageFlipVertical(&state.selected_sprite.image)
+            rl.ImageFlipVertical(&ctx.selected_sprite.image)
 
             should_regenerate_atlas = true
         }
     } else {
         rl.GuiSetTooltip("Rename Atlas [CTRL + R]")
         if rl.GuiButton({60, 4, 24, 24}, "#30#") {
-            for i in 0 ..< len(state.current_atlas.name) do state.atlas_name_buffer[i] = state.current_atlas.name[i]
-            state.is_atlas_rename = true
+            for i in 0 ..< len(ctx.current_atlas.name) {
+                ctx.atlas_name_buffer[i] = ctx.current_atlas.name[i]
+            }
+
+            ctx.is_atlas_rename = true
         }
     }
 
     rl.GuiDisableTooltip()
 
-    if state.is_atlas_rename {
+    if ctx.is_atlas_rename {
         @(static)
         anchor := rl.Vector2{172, 36}
 
-        if rl.GuiWindowBox({anchor.x, anchor.y, 256, 80}, "Rename Atlas") == 1 do state.is_atlas_rename = false
+        if rl.GuiWindowBox({anchor.x, anchor.y, 256, 80}, "Rename Atlas") == 1 {
+            ctx.is_atlas_rename = false
+        }
 
         @(static)
         edit: bool
 
         // NOTE: WTF is this?
-        if rl.GuiTextBox({anchor.x + 4, anchor.y + 28, 248, 20}, cstring(rawptr(&state.atlas_name_buffer)), 64, edit) do edit = !edit
+        if rl.GuiTextBox({anchor.x + 4, anchor.y + 28, 248, 20}, cstring(rawptr(&ctx.atlas_name_buffer)), 64, edit) {
+            edit = !edit
+        }
 
         rl.GuiEnableTooltip()
 
         rl.GuiSetTooltip("Submit rename [ENTER]")
         if rl.GuiButton({anchor.x + 4, anchor.y + 52, 122, 24}, "#112# Submit") || rl.IsKeyPressed(.ENTER) {
-            temp_cstring := cstring(raw_data(state.atlas_name_buffer[:]))
+            temp_cstring := cstring(raw_data(ctx.atlas_name_buffer[:]))
 
-            delete(state.current_atlas.name)
-            state.current_atlas.name = strings.clone_from_cstring_bounded(temp_cstring, len(temp_cstring))
+            delete(ctx.current_atlas.name)
+            ctx.current_atlas.name = strings.clone_from_cstring_bounded(temp_cstring, len(temp_cstring))
 
             edit = false
-            state.is_atlas_rename = false
+            ctx.is_atlas_rename = false
 
-            for i in 0 ..< len(temp_cstring) do state.atlas_name_buffer[i] = 0
+            for i in 0 ..< len(temp_cstring) {
+                ctx.atlas_name_buffer[i] = 0
+            }
         }
 
         rl.GuiSetTooltip("Cancel rename [ESCAPE]")
-        if rl.GuiButton({anchor.x + 130, anchor.y + 52, 122, 24}, "#113# Cancel") || rl.IsKeyPressed(.ESCAPE) do state.is_atlas_rename = false
+        if rl.GuiButton({anchor.x + 130, anchor.y + 52, 122, 24}, "#113# Cancel") || rl.IsKeyPressed(.ESCAPE) {
+            ctx.is_atlas_rename = false
+        }
+
         rl.GuiDisableTooltip()
     }
 
-    if state.is_sprite_rename {
+    if ctx.is_sprite_rename {
         @(static)
         anchor := rl.Vector2{172, 36}
 
-        if rl.GuiWindowBox({anchor.x, anchor.y, 256, 80}, "Rename Sprite") == 1 do state.is_sprite_rename = false
+        if rl.GuiWindowBox({anchor.x, anchor.y, 256, 80}, "Rename Sprite") == 1 {
+            ctx.is_sprite_rename = false
+        }
 
         @(static)
         edit: bool
 
         // NOTE: WTF is this?
-        if rl.GuiTextBox({anchor.x + 4, anchor.y + 28, 248, 20}, cstring(rawptr(&state.sprite_name_buffer)), 64, edit) do edit = !edit
+        if rl.GuiTextBox({anchor.x + 4, anchor.y + 28, 248, 20}, cstring(rawptr(&ctx.sprite_name_buffer)), 64, edit) {
+            edit = !edit
+        }
 
         rl.GuiEnableTooltip()
 
         rl.GuiSetTooltip("Submit rename [ENTER]")
         if rl.GuiButton({anchor.x + 4, anchor.y + 52, 122, 24}, "#112# Submit") || rl.IsKeyPressed(.ENTER) {
-            temp_cstring := cstring(raw_data(state.sprite_name_buffer[:]))
+            temp_cstring := cstring(raw_data(ctx.sprite_name_buffer[:]))
 
-            delete(state.selected_sprite.name)
-            state.selected_sprite.name = strings.clone_from_cstring_bounded(temp_cstring, len(temp_cstring))
+            delete(ctx.selected_sprite.name)
+            ctx.selected_sprite.name = strings.clone_from_cstring_bounded(temp_cstring, len(temp_cstring))
 
             edit = false
-            state.is_sprite_rename = false
+            ctx.is_sprite_rename = false
 
-            for i in 0 ..< len(temp_cstring) do state.sprite_name_buffer[i] = 0
+            for i in 0 ..< len(temp_cstring) {
+                ctx.sprite_name_buffer[i] = 0
+            }
         }
 
         rl.GuiSetTooltip("Cancel rename [ESCAPE]")
-        if rl.GuiButton({anchor.x + 130, anchor.y + 52, 122, 24}, "#113# Cancel") || rl.IsKeyPressed(.ESCAPE) do state.is_sprite_rename = false
+        if rl.GuiButton({anchor.x + 130, anchor.y + 52, 122, 24}, "#113# Cancel") || rl.IsKeyPressed(.ESCAPE) {
+            ctx.is_sprite_rename = false
+        }
         rl.GuiDisableTooltip()
     }
 
     if should_regenerate_atlas {
-        PackSprites(project)
-        core.GenerateAtlas(state.current_atlas)
+        pack_sprites(project)
+        core.generate_atlas(ctx.current_atlas)
     }
 }

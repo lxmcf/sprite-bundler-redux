@@ -12,44 +12,46 @@ Atlas :: struct {
 }
 
 @(private)
-WriteableAtlas :: struct {
+Writeable_Atlas :: struct {
     name:    string,
-    sprites: [dynamic]WriteableSprite,
+    sprites: [dynamic]Writeable_Sprite,
 }
 
 @(private)
-AtlasToWriteable :: proc(atlas: Atlas) -> WriteableAtlas {
-    writeable: WriteableAtlas = {
+atlas_to_writeable :: proc(atlas: Atlas) -> Writeable_Atlas {
+    writeable: Writeable_Atlas = {
         name = atlas.name,
     }
 
     for sprite in atlas.sprites {
-        append(&writeable.sprites, ToWriteable(sprite))
+        append(&writeable.sprites, to_writeable(sprite))
     }
 
     return writeable
 }
 
 @(private)
-AtlasToReadable :: proc(atlas: WriteableAtlas) -> Atlas {
+atlas_to_readable :: proc(atlas: Writeable_Atlas) -> Atlas {
     readable: Atlas = {
         name = strings.clone(atlas.name),
     }
 
     for sprite in atlas.sprites {
-        append(&readable.sprites, ToReadable(sprite))
+        append(&readable.sprites, to_readable(sprite))
     }
 
     return readable
 }
 
-UnloadWriteableAtlas :: proc(atlas: ^WriteableAtlas) {
-    for &sprite in atlas.sprites do UnloadWriteable(&sprite)
+unload_writeable_atlas :: proc(atlas: ^Writeable_Atlas) {
+    for &sprite in atlas.sprites {
+        unload_writeable(&sprite)
+    }
 
     delete(atlas.sprites)
 }
 
-GenerateAtlas :: proc(atlas: ^Atlas) {
+generate_atlas :: proc(atlas: ^Atlas) {
     rl.ImageClearBackground(&atlas.image, rl.BLANK)
 
     for sprite in atlas.sprites {
@@ -60,7 +62,7 @@ GenerateAtlas :: proc(atlas: ^Atlas) {
     atlas.texture = rl.LoadTextureFromImage(atlas.image)
 }
 
-CreateNewAtlas :: proc(project: ^Project, name: string) {
+create_new_atlas :: proc(project: ^Project, name: string) {
     new_atlas: Atlas = {
         name = strings.clone(name),
     }
@@ -71,7 +73,7 @@ CreateNewAtlas :: proc(project: ^Project, name: string) {
     append(&project.atlas, new_atlas)
 }
 
-RenameAtlas :: proc(atlas: ^Atlas, name: string) {
+rename_atlas :: proc(atlas: ^Atlas, name: string) {
     delete(atlas.name)
     atlas.name = strings.clone(name)
 
@@ -81,11 +83,11 @@ RenameAtlas :: proc(atlas: ^Atlas, name: string) {
     }
 }
 
-DeleteAtlas :: proc(project: ^Project, index: int) {
+delete_atlas :: proc(project: ^Project, index: int) {
     atlas := project.atlas[index]
 
     for &sprite in atlas.sprites {
-        DeleteSprite(project, &sprite)
+        delete_sprite(project, &sprite)
     }
 
     rl.UnloadImage(atlas.image)

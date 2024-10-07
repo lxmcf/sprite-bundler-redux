@@ -2,7 +2,7 @@ EXE := lspp
 CC := odin
 BUILD ?= DEBUG
 
-C_FLAGS := -collection:bundler=src -vet -min-link-libs -strict-style
+C_FLAGS := -vet -min-link-libs -strict-style -disallow-do
 OPT := none
 
 EXE_EXT :=

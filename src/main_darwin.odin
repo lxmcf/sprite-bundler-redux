@@ -1,6 +1,6 @@
 package main
 
 // TODO: Add
-GetHomeDirectory :: proc() -> string {
+get_home_directory :: proc() -> string {
     return ""
 }

@@ -19,7 +19,7 @@ Sprite :: struct {
 }
 
 @(private)
-WriteableSprite :: struct {
+Writeable_Sprite :: struct {
     name:      string,
     file:      string,
     atlas:     string,
@@ -32,8 +32,8 @@ WriteableSprite :: struct {
 }
 
 @(private)
-SpriteToWritable :: proc(sprite: Sprite) -> WriteableSprite {
-    writable: WriteableSprite = {
+sprite_to_writable :: proc(sprite: Sprite) -> Writeable_Sprite {
+    writable: Writeable_Sprite = {
         name = sprite.name,
         file = sprite.file,
         atlas = sprite.atlas,
@@ -46,7 +46,7 @@ SpriteToWritable :: proc(sprite: Sprite) -> WriteableSprite {
 }
 
 @(private)
-SpriteToReadable :: proc(sprite: WriteableSprite) -> Sprite {
+sprite_to_readable :: proc(sprite: Writeable_Sprite) -> Sprite {
     readable: Sprite = {
         name = strings.clone(sprite.name),
         file = strings.clone(sprite.file),
@@ -59,9 +59,9 @@ SpriteToReadable :: proc(sprite: WriteableSprite) -> Sprite {
 }
 
 @(private)
-UnloadWriteableSprite :: proc(sprite: ^WriteableSprite) {}
+unload_writeable_sprite :: proc(sprite: ^Writeable_Sprite) {}
 
-DeleteSprite :: proc(project: ^Project, sprite: ^Sprite) {
+delete_sprite :: proc(project: ^Project, sprite: ^Sprite) {
     if project.config.copy_files {
         os.remove(sprite.file)
     }

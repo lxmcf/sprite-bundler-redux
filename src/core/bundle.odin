@@ -16,7 +16,7 @@ BUNDLE_SPRITE_HEADER :: #config(CUSTOM_SPRITE_HEADER, "SPRT")
 
 BUNDLE_BYTE_ALIGNMENT :: 4
 
-BundleError :: enum {
+Bundle_Error :: enum {
     None,
     Could_Not_Open,
     Invalid_Alignment,
@@ -25,7 +25,7 @@ BundleError :: enum {
 }
 
 @(private)
-AlignFile :: proc(handle: os.Handle, alignment: i64) -> i64 {
+align_file :: proc(handle: os.Handle, alignment: i64) -> i64 {
     position, _ := os.seek(handle, 0, os.SEEK_CUR)
     offset := position % alignment
 
@@ -38,7 +38,7 @@ AlignFile :: proc(handle: os.Handle, alignment: i64) -> i64 {
 }
 
 @(private)
-PadFile :: proc(handle: os.Handle, alignment: i64) {
+pad_file :: proc(handle: os.Handle, alignment: i64) {
     position, _ := os.seek(handle, 0, os.SEEK_CUR)
     offset := position % alignment
 
@@ -48,7 +48,7 @@ PadFile :: proc(handle: os.Handle, alignment: i64) {
     }
 }
 
-ExportBundle :: proc(project: Project) -> BundleError {
+export_bundle :: proc(project: Project) -> Bundle_Error {
     export_directory := fmt.tprint(project.working_directory, "export", sep = filepath.SEPARATOR_STRING)
     handle_file := fmt.tprint(export_directory, BUNDLE_FILE, sep = filepath.SEPARATOR_STRING)
 
@@ -61,12 +61,16 @@ ExportBundle :: proc(project: Project) -> BundleError {
     }
 
     handle, err := os.open(handle_file, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, file_mode)
-    if err != os.ERROR_NONE do return .Could_Not_Open
+    if err != os.ERROR_NONE {
+        return .Could_Not_Open
+    }
 
     defer os.close(handle)
 
     project_sprite_count: int
-    for atlas in project.atlas do project_sprite_count += len(atlas.sprites)
+    for atlas in project.atlas {
+        project_sprite_count += len(atlas.sprites)
+    }
 
     project_version := i32(project.version)
     atlas_count := i32(len(project.atlas))
@@ -104,14 +108,14 @@ ExportBundle :: proc(project: Project) -> BundleError {
         os.write_ptr(handle, &sprite_count, size_of(i32))
         os.write_ptr(handle, &name_length, size_of(i32))
         os.write_string(handle, atlas.name)
-        PadFile(handle, BUNDLE_BYTE_ALIGNMENT)
+        pad_file(handle, BUNDLE_BYTE_ALIGNMENT)
 
         // ATLAS DATA -> Layout
         // [4 BYTES] Data size
         // [^ BYTES]
         os.write_ptr(handle, &raw_data_size, size_of(i32))
         os.write_ptr(handle, raw_data, int(raw_data_size))
-        PadFile(handle, BUNDLE_BYTE_ALIGNMENT)
+        pad_file(handle, BUNDLE_BYTE_ALIGNMENT)
     }
 
     // SPRITES
@@ -142,12 +146,12 @@ ExportBundle :: proc(project: Project) -> BundleError {
             os.write_ptr(handle, &frame_speed, size_of(f32))
             os.write_ptr(handle, &atlas_name_length, size_of(i32))
             os.write_string(handle, sprite.atlas)
-            PadFile(handle, BUNDLE_BYTE_ALIGNMENT)
+            pad_file(handle, BUNDLE_BYTE_ALIGNMENT)
 
             os.write_ptr(handle, &atlas_index, size_of(i32))
             os.write_ptr(handle, &name_length, size_of(i32))
             os.write_string(handle, sprite.name)
-            PadFile(handle, BUNDLE_BYTE_ALIGNMENT)
+            pad_file(handle, BUNDLE_BYTE_ALIGNMENT)
 
             // SOURCE DATA -> Layout
             // [4 BYTES] X
@@ -184,12 +188,14 @@ ExportBundle :: proc(project: Project) -> BundleError {
     return .None
 }
 
-ImportBundle :: proc(filename: string) -> BundleError {
+import_bundle :: proc(filename: string) -> Bundle_Error {
     handle, _ := os.open(filename, os.O_RDONLY, 0)
     defer os.close(handle)
 
     file_size := os.file_size_from_path(filename)
-    if file_size % BUNDLE_BYTE_ALIGNMENT != 0 do return .Invalid_Alignment
+    if file_size % BUNDLE_BYTE_ALIGNMENT != 0 {
+        return .Invalid_Alignment
+    }
 
     chunk_header := make([]byte, BUNDLE_BYTE_ALIGNMENT, context.temp_allocator)
 
@@ -211,8 +217,13 @@ ImportBundle :: proc(filename: string) -> BundleError {
             rl.TraceLog(.DEBUG, "\t\tSprite count:     %d", sprite_count)
             rl.TraceLog(.DEBUG, "\t\tAtlas Size:       %d", atlas_size)
 
-            if sprite_count == 0 do return .No_Sprites
-            if atlas_count == 0 do return .No_Atlas
+            if sprite_count == 0 {
+                return .No_Sprites
+            }
+
+            if atlas_count == 0 {
+                return .No_Atlas
+            }
         }
 
         if strings.compare(string(chunk_header), BUNDLE_ATLAS_HEADER) == 0 {
@@ -225,7 +236,7 @@ ImportBundle :: proc(filename: string) -> BundleError {
 
             atlas_name := make([]byte, name_length, context.temp_allocator)
             os.read(handle, atlas_name)
-            AlignFile(handle, BUNDLE_BYTE_ALIGNMENT)
+            align_file(handle, BUNDLE_BYTE_ALIGNMENT)
 
             os.read_ptr(handle, &data_size, size_of(i32))
             data := make([]byte, data_size, context.temp_allocator)
@@ -235,7 +246,7 @@ ImportBundle :: proc(filename: string) -> BundleError {
             rl.TraceLog(.DEBUG, "\t\tData size:        %d", data_size)
 
             os.read(handle, data)
-            AlignFile(handle, BUNDLE_BYTE_ALIGNMENT)
+            align_file(handle, BUNDLE_BYTE_ALIGNMENT)
 
             // TEMP
             export_filename := strings.concatenate({string(atlas_name), ".png"}, context.temp_allocator)
@@ -257,14 +268,14 @@ ImportBundle :: proc(filename: string) -> BundleError {
 
             atlas_name := make([]byte, atlas_name_length, context.temp_allocator)
             os.read(handle, atlas_name)
-            AlignFile(handle, BUNDLE_BYTE_ALIGNMENT)
+            align_file(handle, BUNDLE_BYTE_ALIGNMENT)
 
             os.read_ptr(handle, &atlas_index, size_of(i32))
             os.read_ptr(handle, &name_length, size_of(i32))
 
             sprite_name := make([]byte, name_length, context.temp_allocator)
             os.read(handle, sprite_name)
-            AlignFile(handle, BUNDLE_BYTE_ALIGNMENT)
+            align_file(handle, BUNDLE_BYTE_ALIGNMENT)
 
             rl.TraceLog(.DEBUG, "\t\tFrame count:     %d", frame_count)
             rl.TraceLog(.DEBUG, "\t\tFrame speed:     %f", frame_speed)
