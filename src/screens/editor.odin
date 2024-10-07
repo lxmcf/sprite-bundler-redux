@@ -8,7 +8,6 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 
-// import mu "vendor:microui"
 import rl "vendor:raylib"
 import stb "vendor:stb/rect_pack"
 
@@ -263,10 +262,6 @@ handle_shortcuts :: proc(project: ^core.Project) {
         if change_atlas != 0 {
             ctx.current_atlas_index = clamp(ctx.current_atlas_index + change_atlas, 0, len(project.atlas) - 1)
             ctx.current_atlas = &project.atlas[ctx.current_atlas_index]
-        }
-
-        if rl.IsKeyPressed(.P) {
-            core.import_bundle("bundle.lspx")
         }
     }
 }

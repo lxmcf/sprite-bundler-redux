@@ -3,7 +3,6 @@ package core
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
-import "core:strings"
 
 import rl "vendor:raylib"
 
@@ -13,6 +12,7 @@ BUNDLE_FILE :: #config(CUSTOM_BUNDLE_FILE, "bundle.lspx")
 
 BUNDLE_ATLAS_HEADER :: #config(CUSTOM_ATLAS_HEADER, "ATLS")
 BUNDLE_SPRITE_HEADER :: #config(CUSTOM_SPRITE_HEADER, "SPRT")
+BUNDLE_FONT_HEADER :: #config(CUSTOM_FONT_HEADER, "FONT")
 
 BUNDLE_BYTE_ALIGNMENT :: 4
 
@@ -53,11 +53,10 @@ export_bundle :: proc(project: Project) -> Bundle_Error {
     handle_file := fmt.tprint(export_directory, BUNDLE_FILE, sep = filepath.SEPARATOR_STRING)
 
     os.make_directory(export_directory)
+    file_mode: int
 
     when ODIN_OS == .Linux || ODIN_OS == .Darwin {
-        file_mode := os.S_IRUSR | os.S_IWUSR | os.S_IRGRP | os.S_IROTH
-    } else {
-        file_mode: int
+        file_mode = os.S_IRUSR | os.S_IWUSR | os.S_IRGRP | os.S_IROTH
     }
 
     handle, err := os.open(handle_file, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, file_mode)
@@ -184,122 +183,6 @@ export_bundle :: proc(project: Project) -> Bundle_Error {
     }
 
     os.write_string(handle, BUNDLE_EOF)
-
-    return .None
-}
-
-import_bundle :: proc(filename: string) -> Bundle_Error {
-    handle, _ := os.open(filename, os.O_RDONLY, 0)
-    defer os.close(handle)
-
-    file_size := os.file_size_from_path(filename)
-    if file_size % BUNDLE_BYTE_ALIGNMENT != 0 {
-        return .Invalid_Alignment
-    }
-
-    chunk_header := make([]byte, BUNDLE_BYTE_ALIGNMENT, context.temp_allocator)
-
-    for strings.compare(string(chunk_header), BUNDLE_EOF) != 0 {
-        os.read(handle, chunk_header)
-
-        if strings.compare(string(chunk_header), BUNDLE_HEADER) == 0 {
-            project_version, atlas_count, sprite_count, atlas_size: i32
-            current_position, _ := os.seek(handle, 0, os.SEEK_CUR)
-            rl.TraceLog(.DEBUG, "---> Found bundle at chunk[%d]", current_position / BUNDLE_BYTE_ALIGNMENT)
-
-            os.read_ptr(handle, &project_version, size_of(i32))
-            os.read_ptr(handle, &atlas_count, size_of(i32))
-            os.read_ptr(handle, &sprite_count, size_of(i32))
-            os.read_ptr(handle, &atlas_size, size_of(i32))
-
-            rl.TraceLog(.DEBUG, "\t\tProject version:  %d", project_version)
-            rl.TraceLog(.DEBUG, "\t\tAtlas count:      %d", atlas_count)
-            rl.TraceLog(.DEBUG, "\t\tSprite count:     %d", sprite_count)
-            rl.TraceLog(.DEBUG, "\t\tAtlas Size:       %d", atlas_size)
-
-            if sprite_count == 0 {
-                return .No_Sprites
-            }
-
-            if atlas_count == 0 {
-                return .No_Atlas
-            }
-        }
-
-        if strings.compare(string(chunk_header), BUNDLE_ATLAS_HEADER) == 0 {
-            current_position, _ := os.seek(handle, 0, os.SEEK_CUR)
-            rl.TraceLog(.DEBUG, "---> Found atlas at chunk[%d]", current_position / BUNDLE_BYTE_ALIGNMENT)
-
-            name_length, data_size, sprite_count: i32
-            os.read_ptr(handle, &sprite_count, size_of(i32))
-            os.read_ptr(handle, &name_length, size_of(i32))
-
-            atlas_name := make([]byte, name_length, context.temp_allocator)
-            os.read(handle, atlas_name)
-            align_file(handle, BUNDLE_BYTE_ALIGNMENT)
-
-            os.read_ptr(handle, &data_size, size_of(i32))
-            data := make([]byte, data_size, context.temp_allocator)
-
-            rl.TraceLog(.DEBUG, "\t\tSprite count:     %d", sprite_count)
-            rl.TraceLog(.DEBUG, "\t\tAtlas name:       %s", atlas_name)
-            rl.TraceLog(.DEBUG, "\t\tData size:        %d", data_size)
-
-            os.read(handle, data)
-            align_file(handle, BUNDLE_BYTE_ALIGNMENT)
-
-            // TEMP
-            export_filename := strings.concatenate({string(atlas_name), ".png"}, context.temp_allocator)
-            os.write_entire_file(export_filename, data[:data_size])
-
-            continue
-        }
-
-        if strings.compare(string(chunk_header), BUNDLE_SPRITE_HEADER) == 0 {
-            current_position, _ := os.seek(handle, 0, os.SEEK_CUR)
-            rl.TraceLog(.DEBUG, "---> Found sprite at chunk[%d]", current_position / BUNDLE_BYTE_ALIGNMENT)
-
-            frame_count, name_length, atlas_name_length, atlas_index: i32
-            frame_speed: f32
-
-            os.read_ptr(handle, &frame_count, size_of(i32))
-            os.read_ptr(handle, &frame_speed, size_of(f32))
-            os.read_ptr(handle, &atlas_name_length, size_of(i32))
-
-            atlas_name := make([]byte, atlas_name_length, context.temp_allocator)
-            os.read(handle, atlas_name)
-            align_file(handle, BUNDLE_BYTE_ALIGNMENT)
-
-            os.read_ptr(handle, &atlas_index, size_of(i32))
-            os.read_ptr(handle, &name_length, size_of(i32))
-
-            sprite_name := make([]byte, name_length, context.temp_allocator)
-            os.read(handle, sprite_name)
-            align_file(handle, BUNDLE_BYTE_ALIGNMENT)
-
-            rl.TraceLog(.DEBUG, "\t\tFrame count:     %d", frame_count)
-            rl.TraceLog(.DEBUG, "\t\tFrame speed:     %f", frame_speed)
-            rl.TraceLog(.DEBUG, "\t\tAtlas name:      %s", atlas_name)
-            rl.TraceLog(.DEBUG, "\t\tAtlas index:     %d", atlas_index)
-            rl.TraceLog(.DEBUG, "\t\tSprite name:     %s", sprite_name)
-
-            rect: [4]f32
-            for i in 0 ..< 4 {
-                os.read_ptr(handle, &rect[i], size_of(f32))
-            }
-
-            rl.TraceLog(.DEBUG, "\t\tSprite Source:   [ %.f, %.f, %.f, %.f ]", rect[0], rect[1], rect[2], rect[3])
-
-            origin: [2]f32
-            for i in 0 ..< 2 {
-                os.read_ptr(handle, &origin[i], size_of(f32))
-            }
-
-            rl.TraceLog(.DEBUG, "\t\tSprite Origin:   [ %.f, %.f ]", origin[0], origin[1])
-
-            continue
-        }
-    }
 
     return .None
 }
