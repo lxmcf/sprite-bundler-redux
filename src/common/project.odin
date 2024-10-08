@@ -1,4 +1,4 @@
-package core
+package common
 
 import "core:encoding/json"
 import "core:fmt"

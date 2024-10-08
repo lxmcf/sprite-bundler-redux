@@ -3,10 +3,10 @@ package main
 import "core:os"
 import rl "vendor:raylib"
 
-import "core"
-import db "debug"
+import "common"
 import "screens"
 
+import db "debug"
 _ :: db
 
 FPS_MINIMUM :: 60
@@ -42,14 +42,11 @@ main :: proc() {
     }
 
     current_screen := Application_Screen.Project_Picker
-    current_project: core.Project
-    defer core.unload_project(&current_project)
+    current_project: common.Project
+    defer common.unload_project(&current_project)
 
     init_current_screen(current_screen)
     defer unload_current_screen(current_screen)
-
-    core.Init()
-    defer core.Unload()
 
     for !rl.WindowShouldClose() {
         update_current_screen(current_screen, &current_project)
@@ -92,7 +89,7 @@ init_current_screen :: proc(screen: Application_Screen) {
     }
 }
 
-update_current_screen :: proc(screen: Application_Screen, project: ^core.Project) {
+update_current_screen :: proc(screen: Application_Screen, project: ^common.Project) {
     switch screen {
     case .Editor:
         screens.update_editor(project)
@@ -102,7 +99,7 @@ update_current_screen :: proc(screen: Application_Screen, project: ^core.Project
     }
 }
 
-draw_current_screen :: proc(screen: Application_Screen, project: ^core.Project) {
+draw_current_screen :: proc(screen: Application_Screen, project: ^common.Project) {
     switch screen {
     case .Editor:
         screens.draw_editor(project)

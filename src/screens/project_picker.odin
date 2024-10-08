@@ -6,17 +6,18 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 
-import "../core"
+import "../common"
 
-import mu "vendor:microui"
 import rl "vendor:raylib"
 
 WINDOW_WIDTH :: 640
-WINDOW_HEIGHT :: 332
+WINDOW_HEIGHT :: 360
 
 @(private = "file")
 Project_Picker_Context :: struct {
-    projects: [dynamic]Project_List_Item,
+    projects:          [dynamic]Project_List_Item,
+    project_cstrings:  [dynamic]cstring,
+    background_colour: rl.Color,
 }
 
 @(private = "file")
@@ -30,6 +31,10 @@ Project_List_Item :: struct {
 
 init_project_picker :: proc() {
     rl.SetWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
+
+    rl.GuiSetStyle(.LISTVIEW, i32(rl.GuiControlProperty.TEXT_ALIGNMENT), i32(rl.GuiTextAlignment.TEXT_ALIGN_LEFT))
+
+    ctx.background_colour = rl.GetColor(u32(rl.GuiGetStyle(.DEFAULT, i32(rl.GuiDefaultProperty.BACKGROUND_COLOR))))
 
     matches, err := filepath.glob("projects/*/*.lspp", context.temp_allocator)
     if err == .Syntax_Error {
@@ -60,6 +65,7 @@ init_project_picker :: proc() {
             name = strings.clone(root["name"].(json.String)),
         }
 
+        append(&ctx.project_cstrings, strings.clone_to_cstring(item.name))
         append(&ctx.projects, item)
     }
 }
@@ -71,97 +77,49 @@ unload_project_picker :: proc() {
     }
 
     delete(ctx.projects)
+
+    for text in ctx.project_cstrings {
+        delete(text)
+    }
+
+    delete(ctx.project_cstrings)
 }
 
-update_project_picker :: proc(project: ^core.Project) {
+update_project_picker :: proc(project: ^common.Project) {
     if rl.IsFileDropped() {
         files := rl.LoadDroppedFiles()
         defer rl.UnloadDroppedFiles(files)
 
         if files.count == 1 {
-            project^, _ = core.load_project(string(files.paths[0]))
+            project^, _ = common.load_project(string(files.paths[0]))
         }
-    }
-
-    mu_ctx := core.Begin()
-    defer core.End()
-
-    rect: mu.Rect = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT}
-
-    // NOTE: This is awful, maybe I should just remake raygui?
-    if mu.window(mu_ctx, "Projects", rect, {.NO_RESIZE, .NO_CLOSE}) {
-        mu.layout_row(mu_ctx, {-1}, 192)
-        mu.begin_panel(mu_ctx, "load_project_panel", {.NO_SCROLL})
-
-        container := mu.get_current_container(mu_ctx)
-        label_width := container.rect.w - (mu.default_style.padding * 4) - 144
-
-        if len(ctx.projects) > 0 {
-            for project_item, index in ctx.projects {
-                mu.layout_row(mu_ctx, {label_width, 72, 72})
-                mu.label(mu_ctx, project_item.name)
-
-                mu.push_id(mu_ctx, uintptr(index))
-                if .SUBMIT in mu.button(mu_ctx, "Load") {
-                    err: core.Project_Error
-                    project^, err = core.load_project(project_item.file)
-                }
-
-                if .SUBMIT in mu.button(mu_ctx, "Delete") {
-                    rl.TraceLog(.WARNING, "[PROJECT] Deletion not yet added!")
-                }
-
-                mu.pop_id(mu_ctx)
-            }
-        } else {
-            mu.layout_row(mu_ctx, {-1})
-            mu.label(mu_ctx, "No projects found!")
-        }
-
-        mu.end_panel(mu_ctx)
-
-        mu.layout_row(mu_ctx, {-1}, -1)
-        mu.begin_panel(mu_ctx, "new_project_panel", {.NO_SCROLL})
-
-        mu.layout_row(mu_ctx, {-1, -1}, -1)
-
-        @(static)
-        copy_files, auto_center: bool
-
-        mu.layout_row(mu_ctx, {128, 128})
-        mu.checkbox(mu_ctx, "Copy Sprite Files", &copy_files)
-        mu.checkbox(mu_ctx, "Auto Center Origin", &auto_center)
-
-        @(static)
-        atlas_size: mu.Real
-
-        @(static)
-        project_name_buffer: [mu.MAX_TEXT_STORE]byte
-
-        @(static)
-        project_name_length: int
-        mu.label(mu_ctx, "Atlas Size")
-        mu.slider(mu_ctx, &atlas_size, 512, 8192, 512)
-
-        mu.label(mu_ctx, "Project Name")
-        mu.textbox(mu_ctx, project_name_buffer[:], &project_name_length)
-
-        mu.layout_row(mu_ctx, {-1})
-        if .SUBMIT in mu.button(mu_ctx, "Create Project") {
-            project_name := string(project_name_buffer[:project_name_length])
-
-            err := core.create_new_project(project_name, int(atlas_size), copy_files, auto_center)
-
-            if err == .None {
-                project_file_path := fmt.tprint("projects", project_name, "project.lspp", sep = filepath.SEPARATOR_STRING)
-
-                if os.is_file(project_file_path) {
-                    project^, err = core.load_project(project_file_path)
-                }
-            }
-        }
-        mu.end_panel(mu_ctx)
     }
 }
 
-draw_project_picker :: proc() {}
+draw_project_picker :: proc() {
+    rl.ClearBackground(ctx.background_colour)
+
+    @(static)
+    scroll, active, focus: i32
+    rl.GuiListViewEx({8, 8, WINDOW_WIDTH - 16, 144}, raw_data(ctx.project_cstrings), i32(len(ctx.project_cstrings)), &scroll, &active, &focus)
+
+    if rl.GuiButton({8, 160, 308, 24}, "#005# Load Selected Project") {}
+    if rl.GuiButton({324, 160, 308, 24}, "#143# Delete Selected Project") {}
+
+    rl.GuiGroupBox({8, 200, WINDOW_WIDTH - 16, 152}, "New Project")
+
+    rl.GuiLabel({152, 216, 128, 24}, "Project Name")
+    rl.GuiDummyRec({16, 216, 128, 24}, "[PROJECT NAME]")
+
+    @(static)
+    value: i32
+
+    rl.GuiLabel({152, 248, 128, 24}, "Atlas Size")
+    rl.GuiComboBox({16, 248, 128, 24}, "512;1024;2048;4096;8192;16384", &value)
+
+    temp_bool: bool
+    rl.GuiCheckBox({16, 280, 24, 24}, "Copy Sprite Files", &temp_bool)
+    rl.GuiCheckBox({16, 312, 24, 24}, "Auto Centre Origin", &temp_bool)
+
+    rl.GuiButton({472, 320, 152, 24}, "#008# Create & Load Project")
+}

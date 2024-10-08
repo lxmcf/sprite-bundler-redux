@@ -11,7 +11,7 @@ import "core:strings"
 import rl "vendor:raylib"
 import stb "vendor:stb/rect_pack"
 
-import "../core"
+import "../common"
 
 @(private = "file")
 Editor_Context :: struct {
@@ -20,8 +20,8 @@ Editor_Context :: struct {
 
     // Selected elements
     current_atlas_index:   int,
-    current_atlas:         ^core.Atlas,
-    selected_sprite:       ^core.Sprite,
+    current_atlas:         ^common.Atlas,
+    selected_sprite:       ^common.Sprite,
     selected_sprite_index: int,
 
     // Buffers
@@ -60,7 +60,7 @@ init_editor :: proc() {
 
 unload_editor :: proc() {}
 
-update_editor :: proc(project: ^core.Project) {
+update_editor :: proc(project: ^common.Project) {
     if ctx.current_atlas == nil {
         ctx.current_atlas = &project.atlas[0]
     }
@@ -121,7 +121,7 @@ update_editor :: proc(project: ^core.Project) {
     rl.SetMouseCursor(ctx.cursor)
 }
 
-draw_editor :: proc(project: ^core.Project) {
+draw_editor :: proc(project: ^common.Project) {
     draw_main_editor(project)
     draw_editor_gui(project)
 }
@@ -157,36 +157,36 @@ update_camera :: proc() {
 
 // TODO: Move to an event queue
 @(private = "file")
-handle_editor_actions :: proc(project: ^core.Project) {
+handle_editor_actions :: proc(project: ^common.Project) {
     if ctx.save_project {
-        core.write_project(project)
+        common.write_project(project)
     }
 
     if ctx.export_project {
-        core.export_bundle(project^)
+        common.export_bundle(project^)
     }
 
     if ctx.create_new_atlas {
-        core.create_new_atlas(project, "Blank Atlas")
+        common.create_new_atlas(project, "Blank Atlas")
     }
 
     if ctx.delete_current_atlas {
-        core.delete_atlas(project, ctx.current_atlas_index)
+        common.delete_atlas(project, ctx.current_atlas_index)
 
         if len(project.atlas) == 0 {
-            core.create_new_atlas(project, "Blank Atlas")
+            common.create_new_atlas(project, "Blank Atlas")
         }
 
         ctx.current_atlas_index = clamp(ctx.current_atlas_index, 0, len(project.atlas) - 1)
     }
 
     if ctx.delete_current_sprite {
-        core.delete_sprite(project, ctx.selected_sprite)
+        common.delete_sprite(project, ctx.selected_sprite)
 
         unordered_remove(&ctx.current_atlas.sprites, ctx.selected_sprite_index)
 
         pack_sprites(project)
-        core.generate_atlas(ctx.current_atlas)
+        common.generate_atlas(ctx.current_atlas)
 
         ctx.selected_sprite = nil
     }
@@ -199,7 +199,7 @@ handle_editor_actions :: proc(project: ^core.Project) {
 }
 
 @(private = "file")
-handle_shortcuts :: proc(project: ^core.Project) {
+handle_shortcuts :: proc(project: ^common.Project) {
     // Centre camera
     if rl.IsKeyReleased(.Z) && !ctx.should_edit_origin {
         screen: rl.Vector2 = {f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight())}
@@ -267,7 +267,7 @@ handle_shortcuts :: proc(project: ^core.Project) {
 }
 
 @(private = "file")
-handle_dropped_files :: proc(project: ^core.Project) {
+handle_dropped_files :: proc(project: ^common.Project) {
     if rl.IsFileDropped() {
         files := rl.LoadDroppedFiles()
         defer rl.UnloadDroppedFiles(files)
@@ -300,7 +300,7 @@ handle_dropped_files :: proc(project: ^core.Project) {
                     rl.ExportImage(image, strings.clone_to_cstring(export_path, context.temp_allocator))
                 }
 
-                sprite: core.Sprite = {
+                sprite: common.Sprite = {
                     name   = name,
                     file   = strings.clone_from_cstring(path),
                     atlas  = strings.clone(ctx.current_atlas.name),
@@ -317,7 +317,7 @@ handle_dropped_files :: proc(project: ^core.Project) {
 
             pack_sprites(project)
 
-            core.generate_atlas(ctx.current_atlas)
+            common.generate_atlas(ctx.current_atlas)
         } else {
             rl.TraceLog(.ERROR, "[FILE] Did not find any files to sort!")
         }
@@ -325,7 +325,7 @@ handle_dropped_files :: proc(project: ^core.Project) {
 }
 
 @(private = "file")
-pack_sprites :: proc(project: ^core.Project) {
+pack_sprites :: proc(project: ^common.Project) {
     atlas_size := i32(project.config.atlas_size)
 
     stb_context: stb.Context
@@ -357,7 +357,7 @@ pack_sprites :: proc(project: ^core.Project) {
 }
 
 @(private = "file")
-draw_main_editor :: proc(project: ^core.Project) {
+draw_main_editor :: proc(project: ^common.Project) {
     rl.BeginMode2D(ctx.camera)
     defer rl.EndMode2D()
 
@@ -373,7 +373,7 @@ draw_main_editor :: proc(project: ^core.Project) {
 }
 
 @(private = "file")
-draw_editor_gui :: proc(project: ^core.Project) {
+draw_editor_gui :: proc(project: ^common.Project) {
     should_regenerate_atlas: bool
     rl.DrawTextEx(rl.GetFontDefault(), strings.clone_to_cstring(ctx.current_atlas.name, context.temp_allocator), rl.GetWorldToScreen2D({}, ctx.camera) + {0, -48}, 40, 1, rl.WHITE)
 
@@ -553,6 +553,6 @@ draw_editor_gui :: proc(project: ^core.Project) {
 
     if should_regenerate_atlas {
         pack_sprites(project)
-        core.generate_atlas(ctx.current_atlas)
+        common.generate_atlas(ctx.current_atlas)
     }
 }

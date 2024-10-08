@@ -1,4 +1,4 @@
-package core
+package common
 
 @(private)
 to_writeable :: proc {
