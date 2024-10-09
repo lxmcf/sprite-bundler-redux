@@ -1,9 +1,7 @@
-// FIXME: This really does not need to be 400+ lines...
-package screens
+package editor
 
 import "core:crypto"
 import "core:encoding/uuid"
-import "core:math"
 import "core:os"
 import "core:path/filepath"
 import "core:strings"
@@ -11,122 +9,8 @@ import "core:strings"
 import rl "vendor:raylib"
 import stb "vendor:stb/rect_pack"
 
-import "../common"
+import "../../common"
 
-@(private = "file")
-Editor_Context :: struct {
-    camera:                rl.Camera2D,
-    cursor:                rl.MouseCursor,
-
-    // Selected elements
-    current_atlas_index:   int,
-    current_atlas:         ^common.Atlas,
-    selected_sprite:       ^common.Sprite,
-    selected_sprite_index: int,
-
-    // Buffers
-    is_dialog_open:        bool,
-    is_atlas_rename:       bool,
-    is_sprite_rename:      bool,
-    atlas_name_buffer:     [64]byte,
-    sprite_name_buffer:    [64]byte,
-
-    // Editors
-    should_edit_origin:    bool,
-
-    // UI controls
-    save_project:          bool,
-    export_project:        bool,
-    create_new_atlas:      bool,
-    delete_current_atlas:  bool,
-    delete_current_sprite: bool,
-}
-
-@(private = "file")
-ctx: Editor_Context
-
-TOOLBAR_HEIGHT :: 32
-
-init_editor :: proc() {
-    rl.SetWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
-    rl.SetWindowState({.WINDOW_MAXIMIZED})
-
-    ctx.camera.zoom = 0.5
-
-    ctx.current_atlas = nil
-    ctx.selected_sprite = nil
-    ctx.selected_sprite_index = -1
-}
-
-unload_editor :: proc() {}
-
-update_editor :: proc(project: ^common.Project) {
-    if ctx.current_atlas == nil {
-        ctx.current_atlas = &project.atlas[0]
-    }
-
-    handle_editor_actions(project)
-
-    ctx.cursor = .DEFAULT
-
-    ctx.is_dialog_open = ctx.is_atlas_rename || ctx.is_sprite_rename
-
-    update_camera()
-
-    handle_shortcuts(project)
-    handle_dropped_files(project)
-
-    if rl.GetMouseY() < i32(TOOLBAR_HEIGHT) || ctx.is_dialog_open {
-        rl.SetMouseCursor(.DEFAULT)
-        return
-    }
-
-    mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), ctx.camera)
-    for &sprite, index in ctx.current_atlas.sprites {
-        if rl.CheckCollisionPointRec(mouse_position, sprite.source) {
-            ctx.cursor = .POINTING_HAND
-
-            if rl.IsMouseButtonReleased(.LEFT) {
-                ctx.selected_sprite = &sprite
-                ctx.selected_sprite_index = index
-            }
-            break
-        }
-    }
-
-    if ctx.selected_sprite != nil {
-        if ctx.should_edit_origin {
-            offset := mouse_position - {ctx.selected_sprite.source.x, ctx.selected_sprite.source.y}
-
-            offset.x = clamp(math.round(offset.x), 0, ctx.selected_sprite.source.width)
-            offset.y = clamp(math.round(offset.y), 0, ctx.selected_sprite.source.height)
-
-            ctx.selected_sprite.origin = offset
-
-            ctx.cursor = .RESIZE_ALL
-
-            if rl.IsMouseButtonPressed(.LEFT) {
-                ctx.should_edit_origin = false
-            }
-        } else {
-            if rl.IsMouseButtonReleased(.LEFT) {
-                if !rl.CheckCollisionPointRec(mouse_position, ctx.selected_sprite.source) {
-                    ctx.selected_sprite = nil
-                    ctx.selected_sprite_index = -1
-                }
-            }
-        }
-    }
-
-    rl.SetMouseCursor(ctx.cursor)
-}
-
-draw_editor :: proc(project: ^common.Project) {
-    draw_main_editor(project)
-    draw_editor_gui(project)
-}
-
-@(private = "file")
 update_camera :: proc() {
     if ctx.is_dialog_open {
         return
@@ -155,8 +39,6 @@ update_camera :: proc() {
     }
 }
 
-// TODO: Move to an event queue
-@(private = "file")
 handle_editor_actions :: proc(project: ^common.Project) {
     if ctx.save_project {
         common.write_project(project)
@@ -198,7 +80,6 @@ handle_editor_actions :: proc(project: ^common.Project) {
     ctx.delete_current_sprite = false
 }
 
-@(private = "file")
 handle_shortcuts :: proc(project: ^common.Project) {
     // Centre camera
     if rl.IsKeyReleased(.Z) && !ctx.should_edit_origin {
@@ -266,7 +147,6 @@ handle_shortcuts :: proc(project: ^common.Project) {
     }
 }
 
-@(private = "file")
 handle_dropped_files :: proc(project: ^common.Project) {
     if rl.IsFileDropped() {
         files := rl.LoadDroppedFiles()
@@ -324,7 +204,6 @@ handle_dropped_files :: proc(project: ^common.Project) {
     }
 }
 
-@(private = "file")
 pack_sprites :: proc(project: ^common.Project) {
     atlas_size := i32(project.config.atlas_size)
 
@@ -356,7 +235,6 @@ pack_sprites :: proc(project: ^common.Project) {
     }
 }
 
-@(private = "file")
 draw_main_editor :: proc(project: ^common.Project) {
     rl.BeginMode2D(ctx.camera)
     defer rl.EndMode2D()
@@ -372,7 +250,6 @@ draw_main_editor :: proc(project: ^common.Project) {
     }
 }
 
-@(private = "file")
 draw_editor_gui :: proc(project: ^common.Project) {
     should_regenerate_atlas: bool
     rl.DrawTextEx(rl.GetFontDefault(), strings.clone_to_cstring(ctx.current_atlas.name, context.temp_allocator), rl.GetWorldToScreen2D({}, ctx.camera) + {0, -48}, 40, 1, rl.WHITE)

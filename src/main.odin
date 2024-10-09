@@ -4,7 +4,8 @@ import "core:os"
 import rl "vendor:raylib"
 
 import "common"
-import "screens"
+import editor "screens/editor"
+import projects "screens/project_picker"
 
 import db "debug"
 _ :: db
@@ -29,7 +30,6 @@ main :: proc() {
     rl.InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
     defer rl.CloseWindow()
 
-    // rl.SetWindowMinSize(640, 360)
     rl.SetWindowState({.WINDOW_RESIZABLE})
     rl.SetExitKey(.KEY_NULL)
 
@@ -65,14 +65,14 @@ main :: proc() {
             unload_current_screen(current_screen)
             current_screen = .Editor
 
-            screens.init_editor()
+            editor.init_scene()
         }
 
         if !current_project.is_loaded && current_screen != .Project_Picker {
             unload_current_screen(current_screen)
             current_screen = .Project_Picker
 
-            screens.init_project_picker()
+            projects.init_scene()
         }
 
         free_all(context.temp_allocator)
@@ -82,39 +82,39 @@ main :: proc() {
 init_current_screen :: proc(screen: Application_Screen) {
     switch screen {
     case .Editor:
-        screens.init_editor()
+        editor.init_scene()
 
     case .Project_Picker:
-        screens.init_project_picker()
+        projects.init_scene()
     }
 }
 
 update_current_screen :: proc(screen: Application_Screen, project: ^common.Project) {
     switch screen {
     case .Editor:
-        screens.update_editor(project)
+        editor.update_scene(project)
 
     case .Project_Picker:
-        screens.update_project_picker(project)
+        projects.update_scene(project)
     }
 }
 
 draw_current_screen :: proc(screen: Application_Screen, project: ^common.Project) {
     switch screen {
     case .Editor:
-        screens.draw_editor(project)
+        editor.draw_scene(project)
 
     case .Project_Picker:
-        screens.draw_project_picker()
+        projects.draw_scene()
     }
 }
 
 unload_current_screen :: proc(screen: Application_Screen) {
     switch screen {
     case .Editor:
-        screens.unload_editor()
+        editor.unload_scene()
 
     case .Project_Picker:
-        screens.unload_project_picker()
+        projects.unload_scene()
     }
 }

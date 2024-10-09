@@ -1,4 +1,4 @@
-package screens
+package project_picker
 
 import "core:encoding/json"
 import "core:fmt"
@@ -6,7 +6,7 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 
-import "../common"
+import "../../common"
 
 import rl "vendor:raylib"
 
@@ -29,7 +29,7 @@ Project_List_Item :: struct {
     file:      string,
 }
 
-init_project_picker :: proc() {
+init_scene :: proc() {
     rl.SetWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
 
     rl.GuiSetStyle(.LISTVIEW, i32(rl.GuiControlProperty.TEXT_ALIGNMENT), i32(rl.GuiTextAlignment.TEXT_ALIGN_LEFT))
@@ -70,7 +70,7 @@ init_project_picker :: proc() {
     }
 }
 
-unload_project_picker :: proc() {
+unload_scene :: proc() {
     for project in ctx.projects {
         delete(project.name)
         delete(project.file)
@@ -85,7 +85,7 @@ unload_project_picker :: proc() {
     delete(ctx.project_cstrings)
 }
 
-update_project_picker :: proc(project: ^common.Project) {
+update_scene :: proc(project: ^common.Project) {
     if rl.IsFileDropped() {
         files := rl.LoadDroppedFiles()
         defer rl.UnloadDroppedFiles(files)
@@ -96,7 +96,7 @@ update_project_picker :: proc(project: ^common.Project) {
     }
 }
 
-draw_project_picker :: proc() {
+draw_scene :: proc() {
     rl.ClearBackground(ctx.background_colour)
 
     @(static)
