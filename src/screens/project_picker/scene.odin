@@ -10,24 +10,7 @@ import "../../common"
 
 import rl "vendor:raylib"
 
-WINDOW_WIDTH :: 640
-WINDOW_HEIGHT :: 360
-
-@(private = "file")
-Project_Picker_Context :: struct {
-    projects:          [dynamic]Project_List_Item,
-    project_cstrings:  [dynamic]cstring,
-    background_colour: rl.Color,
-}
-
-@(private = "file")
 ctx: Project_Picker_Context
-
-Project_List_Item :: struct {
-    name:      string,
-    directory: string,
-    file:      string,
-}
 
 init_scene :: proc() {
     rl.SetWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -94,32 +77,49 @@ update_scene :: proc(project: ^common.Project) {
             project^, _ = common.load_project(string(files.paths[0]))
         }
     }
+
+    if ctx.load_project {
+        project^, _ = common.load_project(ctx.projects[ctx.list_active].file)
+    }
+
+    if ctx.delete_project {
+        // TODO: Add
+    }
+
+    if ctx.create_project {
+        atlas_lookup := [?]int{512, 1024, 2048, 4096, 8192, 16384}
+        temp_cstring := cstring(raw_data(ctx.project_name_buffer[:]))
+
+        err := common.create_new_project(string(temp_cstring), atlas_lookup[ctx.atlas_index], false, false)
+
+        if err == .Project_Exists {
+            // TODO: Add alarm
+        }
+    }
 }
 
 draw_scene :: proc() {
     rl.ClearBackground(ctx.background_colour)
 
-    @(static)
-    scroll, active, focus: i32
-    rl.GuiListViewEx({8, 8, WINDOW_WIDTH - 16, 144}, raw_data(ctx.project_cstrings), i32(len(ctx.project_cstrings)), &scroll, &active, &focus)
+    rl.GuiListViewEx({8, 8, WINDOW_WIDTH - 16, 144}, raw_data(ctx.project_cstrings), i32(len(ctx.project_cstrings)), &ctx.list_scroll, &ctx.list_active, &ctx.list_focus)
 
-    if rl.GuiButton({8, 160, 308, 24}, "#005# Load Selected Project") {}
-    if rl.GuiButton({324, 160, 308, 24}, "#143# Delete Selected Project") {}
+    ctx.load_project = rl.GuiButton({8, 160, 308, 24}, "#005# Load Selected Project")
+    ctx.delete_project = rl.GuiButton({324, 160, 308, 24}, "#143# Delete Selected Project")
 
     rl.GuiGroupBox({8, 200, WINDOW_WIDTH - 16, 152}, "New Project")
 
     rl.GuiLabel({152, 216, 128, 24}, "Project Name")
-    rl.GuiDummyRec({16, 216, 128, 24}, "[PROJECT NAME]")
 
-    @(static)
-    value: i32
+    if rl.GuiTextBox({16, 216, 128, 24}, cstring(rawptr(&ctx.project_name_buffer)), i32(len(ctx.project_name_buffer)), ctx.project_name_edit) {
+        ctx.project_name_edit = !ctx.project_name_edit
+    }
 
     rl.GuiLabel({152, 248, 128, 24}, "Atlas Size")
-    rl.GuiComboBox({16, 248, 128, 24}, "512;1024;2048;4096;8192;16384", &value)
+    rl.GuiComboBox({16, 248, 128, 24}, "512;1024;2048;4096;8192;16384", &ctx.atlas_index)
 
     temp_bool: bool
     rl.GuiCheckBox({16, 280, 24, 24}, "Copy Sprite Files", &temp_bool)
     rl.GuiCheckBox({16, 312, 24, 24}, "Auto Centre Origin", &temp_bool)
 
-    rl.GuiButton({472, 320, 152, 24}, "#008# Create & Load Project")
+    ctx.create_project = rl.GuiButton({472, 320, 152, 24}, "#008# Create & Load Project")
 }

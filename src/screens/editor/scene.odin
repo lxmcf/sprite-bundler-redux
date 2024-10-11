@@ -1,4 +1,4 @@
-// FIXME: This really does not need to be 400+ lines...
+
 package editor
 
 import "core:math"
@@ -7,39 +7,7 @@ import rl "vendor:raylib"
 
 import "../../common"
 
-@(private)
-Editor_Context :: struct {
-    camera:                rl.Camera2D,
-    cursor:                rl.MouseCursor,
-
-    // Selected elements
-    current_atlas_index:   int,
-    current_atlas:         ^common.Atlas,
-    selected_sprite:       ^common.Sprite,
-    selected_sprite_index: int,
-
-    // Buffers
-    is_dialog_open:        bool,
-    is_atlas_rename:       bool,
-    is_sprite_rename:      bool,
-    atlas_name_buffer:     [64]byte,
-    sprite_name_buffer:    [64]byte,
-
-    // Editors
-    should_edit_origin:    bool,
-
-    // UI controls
-    save_project:          bool,
-    export_project:        bool,
-    create_new_atlas:      bool,
-    delete_current_atlas:  bool,
-    delete_current_sprite: bool,
-}
-
-@(private)
 ctx: Editor_Context
-
-TOOLBAR_HEIGHT :: 32
 
 init_scene :: proc() {
     rl.SetWindowState({.WINDOW_MAXIMIZED})
