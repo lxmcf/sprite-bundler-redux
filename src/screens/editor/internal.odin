@@ -132,6 +132,14 @@ handle_shortcuts :: proc(project: ^common.Project) {
         ctx.should_edit_origin = !ctx.should_edit_origin
     }
 
+    if rl.IsKeyPressed(.DELETE) {
+        if ctx.selected_sprite != nil {
+            ctx.delete_current_sprite = true
+        } else {
+            ctx.delete_current_atlas = true
+        }
+    }
+
     if rl.IsKeyDown(.LEFT_CONTROL) {
         if rl.IsKeyPressed(.S) {
             ctx.save_project = true
@@ -145,13 +153,6 @@ handle_shortcuts :: proc(project: ^common.Project) {
             ctx.create_new_atlas = true
         }
 
-        if rl.IsKeyPressed(.Y) {
-            if ctx.selected_sprite != nil {
-                ctx.delete_current_sprite = true
-            } else {
-                ctx.delete_current_atlas = true
-            }
-        }
 
         if rl.IsKeyPressed(.R) {
             if ctx.selected_sprite != nil {

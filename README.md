@@ -70,7 +70,7 @@ odin build src/ -out:application.exe -collection:bundler=src -vet -min-link-libs
     - Press `CTRL + N` to create a blank texture atlas (All atlas' will be the same size)
     - Press `CTRL + [` or `CTRL + ]` to navigate between atlas'
     - Press `CTRL + R` with no sprite selected to rename the current atlas
-    - Press `CTRL + Y` to delete the current atlas
+    - Press `DELETE` to delete the current atlas
 
 - Camera controls
     - Press `Z` to center camera and reset zoom

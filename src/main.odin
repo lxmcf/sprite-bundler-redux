@@ -26,7 +26,7 @@ main :: proc() {
         defer db.unload_allocator()
     }
 
-    rl.SetTraceLogLevel(.DEBUG when ODIN_DEBUG else .NONE)
+    rl.SetTraceLogLevel(.DEBUG when ODIN_DEBUG else .FATAL)
     rl.InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
     defer rl.CloseWindow()
 
