@@ -18,6 +18,8 @@ Project_Picker_Context :: struct {
     project_name_buffer: [128]byte,
     project_name_edit:   bool,
     atlas_index:         i32,
+    config_copy_sprites: bool,
+    config_auto_centre:  bool,
 }
 
 Project_List_Item :: struct {

@@ -90,7 +90,7 @@ update_scene :: proc(project: ^common.Project) {
         atlas_lookup := [?]int{512, 1024, 2048, 4096, 8192, 16384}
         temp_cstring := cstring(raw_data(ctx.project_name_buffer[:]))
 
-        err := common.create_new_project(string(temp_cstring), atlas_lookup[ctx.atlas_index], false, false)
+        err := common.create_new_project(string(temp_cstring), atlas_lookup[ctx.atlas_index], ctx.config_copy_sprites, ctx.config_auto_centre)
 
         if err == .Project_Exists {
             // TODO: Add alarm
@@ -108,18 +108,17 @@ draw_scene :: proc() {
 
     rl.GuiGroupBox({8, 200, WINDOW_WIDTH - 16, 152}, "New Project")
 
-    rl.GuiLabel({152, 216, 128, 24}, "Project Name")
+    rl.GuiLabel({184, 216, 128, 24}, "Project Name")
 
-    if rl.GuiTextBox({16, 216, 128, 24}, cstring(rawptr(&ctx.project_name_buffer)), i32(len(ctx.project_name_buffer)), ctx.project_name_edit) {
+    if rl.GuiTextBox({16, 216, 160, 24}, cstring(rawptr(&ctx.project_name_buffer)), i32(len(ctx.project_name_buffer)), ctx.project_name_edit) {
         ctx.project_name_edit = !ctx.project_name_edit
     }
 
-    rl.GuiLabel({152, 248, 128, 24}, "Atlas Size")
-    rl.GuiComboBox({16, 248, 128, 24}, "512;1024;2048;4096;8192;16384", &ctx.atlas_index)
+    rl.GuiLabel({184, 248, 128, 24}, "Atlas Size")
+    rl.GuiComboBox({16, 248, 160, 24}, "512;1024;2048;4096;8192;16384", &ctx.atlas_index)
 
-    temp_bool: bool
-    rl.GuiCheckBox({16, 280, 24, 24}, "Copy Sprite Files", &temp_bool)
-    rl.GuiCheckBox({16, 312, 24, 24}, "Auto Centre Origin", &temp_bool)
+    rl.GuiCheckBox({16, 280, 24, 24}, "Copy Sprite Files", &ctx.config_copy_sprites)
+    rl.GuiCheckBox({16, 312, 24, 24}, "Auto Centre Origin", &ctx.config_auto_centre)
 
     ctx.create_project = rl.GuiButton({472, 320, 152, 24}, "#008# Create & Load Project")
 }
