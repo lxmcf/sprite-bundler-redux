@@ -1,7 +1,7 @@
 # Roadmap
 
 ### Version 1.0:
-* [ ] Cleaner UI (Drop microui and make a simple gui library)
+* [X] Cleaner UI (Drop microui and make a simple gui library)
 * [ ] Code cleanup
 * [ ] Animations
 * [ ] Tilemaps
@@ -11,7 +11,7 @@
     * [ ] SDL
     * [ ] Generic
 * [ ] More loader functionality
-    * [ ] 9 slice
+    * [X] 9 slice
     * [ ] Tile drawing
 * [ ] Bundle inspector
 * [ ] Sprite splitting (Split 1 sprite into multiple)

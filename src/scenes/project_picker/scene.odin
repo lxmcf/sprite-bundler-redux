@@ -21,7 +21,7 @@ init_scene :: proc() {
 
     matches, err := filepath.glob("projects/*/*.lspp", context.temp_allocator)
     if err == .Syntax_Error {
-        rl.TraceLog(.ERROR, "[JSON] Invalid JSON syntax")
+        rl.TraceLog(.ERROR, "JSON: Invalid JSON syntax")
         return
     }
 
@@ -31,13 +31,13 @@ init_scene :: proc() {
         defer delete(data)
 
         if !ok {
-            rl.TraceLog(.ERROR, "[FILE] Failed to load file: %s", match)
+            rl.TraceLog(.ERROR, "FILE: Failed to load file: %s", match)
             continue
         }
 
         json_data, err := json.parse(data, allocator = context.temp_allocator)
         if err != .None {
-            rl.TraceLog(.ERROR, "[JSON] Failed to parse JSON data: %s", fmt.tprint(err))
+            rl.TraceLog(.ERROR, "JSON: Failed to parse JSON data: %s", fmt.tprint(err))
             continue
         }
 
@@ -92,8 +92,17 @@ update_scene :: proc(project: ^common.Project) {
 
         err := common.create_new_project(string(temp_cstring), atlas_lookup[ctx.atlas_index], ctx.config_copy_sprites, ctx.config_auto_centre)
 
-        if err == .Project_Exists {
-            // TODO: Add alarm
+        #partial switch err {
+        case .None:
+            project_file_path := fmt.tprint("projects", string(temp_cstring), "project.lspp", sep = filepath.SEPARATOR_STRING)
+
+            if os.is_file(project_file_path) {
+                project^, _ = common.load_project(project_file_path)
+            }
+            break
+
+        case:
+            fmt.println("ERROR: PROJECT:", err)
         }
     }
 }
