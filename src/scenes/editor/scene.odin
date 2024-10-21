@@ -10,6 +10,7 @@ import "../../common"
 ctx: Editor_Context
 
 init_scene :: proc() {
+    rl.SetWindowSize (1280, 720)
     rl.SetWindowState({.WINDOW_MAXIMIZED})
 
     ctx.camera.zoom = 0.5
