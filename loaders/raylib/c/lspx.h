@@ -36,6 +36,7 @@ extern "C" {
 void DrawSprite (int index, Vector2 position, Color color);
 void DrawSpriteEx (int index, Vector2 position, float scale, float rotation, Color color);
 void DrawSpritePro (int index, Vector2 position, Vector2 scale, float rotation, int flip_mode, Color color);
+void DrawSpriteNineSlice (int index, Rectangle bounds, Color color);
 
 Vector2 GetSpriteOrigin (int index);
 
@@ -150,6 +151,47 @@ void DrawSpritePro (int index, Vector2 position, Vector2 scale, float rotation, 
         CLITERAL (Vector2){sprite->origin.x * scale.x, sprite->origin.y * scale.y},
         rotation,
         color);
+}
+
+void DrawSpriteNineSlice (int index, Rectangle bounds, Color color) {
+    if (lspx__active_bundle == NULL)
+        return;
+    if (index == -1 || index > lspx__active_bundle->sprite_count - 1)
+        return;
+
+    Sprite2D* sprite = &lspx__active_bundle->sprite[index];
+    Texture atlas    = lspx__active_bundle->atlas[sprite->atlas_index];
+    Rectangle source = sprite->source;
+
+    float cell_width  = source.width / 2;
+    float cell_height = source.height / 2;
+
+    Rectangle top_left   = CLITERAL (Rectangle){source.x, source.y, cell_width, cell_height};
+    Rectangle top_middle = CLITERAL (Rectangle){source.x + cell_width, source.y, cell_width, cell_height};
+    Rectangle top_right  = CLITERAL (Rectangle){source.x + (cell_width * 2.0f), source.y, cell_width, cell_height};
+
+    Rectangle middle_left   = CLITERAL (Rectangle){source.x, source.y + cell_height, cell_width, cell_height};
+    Rectangle middle_middle = CLITERAL (Rectangle){source.x + cell_width, source.y + cell_height, cell_width, cell_height};
+    Rectangle middle_right  = CLITERAL (Rectangle){source.x + (cell_width * 2.0f), source.y + cell_height, cell_width, cell_height};
+
+    Rectangle bottom_left   = CLITERAL (Rectangle){source.x, source.y + (cell_height * 2.0f), cell_width, cell_height};
+    Rectangle bottom_middle = CLITERAL (Rectangle){source.x + cell_width, source.y + (cell_height * 2.0f), cell_width, cell_height};
+    Rectangle bottom_right  = CLITERAL (Rectangle){source.x + (cell_width * 2.0f), source.y + (cell_height * 2.0f), cell_width, cell_height};
+
+    // Corners
+    DrawTextureRec (atlas, top_left, {bounds.x, bounds.y}, color);
+    DrawTextureRec (atlas, top_right, {bounds.x + (bounds.width - cell_width), bounds.y}, color);
+    DrawTextureRec (atlas, bottom_left, {bounds.x, bounds.y + (bounds.height - cell_height)}, color);
+    DrawTextureRec (atlas, bottom_right, {bounds.x + (bounds.width - cell_width), bounds.y + (bounds.height - cell_height)}, color);
+
+    // Connectors
+    DrawTexturePro (atlas, top_middle, {bounds.x + cell_width, bounds.y, bounds.width - (cell_width * 2.0f), cell_height}, {}, 0, color);
+    DrawTexturePro (atlas, middle_left, {bounds.x, bounds.y + cell_height, cell_width, bounds.height - (cell_height * 2.0f)}, {}, 0, color);
+    DrawTexturePro (atlas, middle_right, {bounds.x + bounds.width - cell_width, bounds.y + cell_height, cell_width, bounds.height - (cell_height * 2.0f)}, {}, 0, color);
+    DrawTexturePro (atlas, bottom_middle, {bounds.x + cell_width, bounds.y + (bounds.height - cell_height), bounds.width - (cell_width * 2.0f), cell_height}, {}, 0, color);
+
+    // Centre
+    DrawTexturePro (atlas, middle_middle, {bounds.x + cell_width, bounds.y + cell_height, bounds.width - (cell_width * 2.0f), bounds.height - (cell_height * 2.0f)}, {}, 0, color);
 }
 
 Vector2 GetSpriteOrigin (int index) {

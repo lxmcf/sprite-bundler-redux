@@ -7,6 +7,7 @@
 * [ ] Tilemaps
 * [ ] Versioning system
 * [ ] Stable file compression
+* [ ] Seperate sprite bounds from sprite textures
 * [ ] New loaders
     * [ ] SDL
     * [ ] Generic
