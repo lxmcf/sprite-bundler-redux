@@ -23,7 +23,6 @@ Project :: struct {
     background:        rl.Texture2D,
     atlas:             [dynamic]Atlas,
     config:            struct {
-        assets_dir:  string,
         copy_files:  bool,
         auto_center: bool,
         atlas_size:  int,
@@ -40,7 +39,6 @@ Writeable_Project :: struct {
     name:    string,
     atlas:   [dynamic]Writeable_Atlas,
     config:  struct {
-        assets_dir:  string,
         copy_files:  bool,
         auto_center: bool,
         atlas_size:  int,
@@ -62,7 +60,7 @@ project_to_writeable :: proc(project: Project) -> Writeable_Project {
     writable: Writeable_Project = {
         version = project.version,
         name = project.name,
-        config = {assets_dir = project.config.assets_dir, copy_files = project.config.copy_files, auto_center = project.config.auto_center, atlas_size = project.config.atlas_size},
+        config = {copy_files = project.config.copy_files, auto_center = project.config.auto_center, atlas_size = project.config.atlas_size},
     }
 
     for atlas in project.atlas {
@@ -77,7 +75,7 @@ project_to_readable :: proc(project: Writeable_Project) -> Project {
     readable: Project = {
         name = strings.clone(project.name),
         version = project.version,
-        config = {assets_dir = strings.clone(project.config.assets_dir), copy_files = project.config.copy_files, auto_center = project.config.auto_center, atlas_size = project.config.atlas_size},
+        config = {copy_files = project.config.copy_files, auto_center = project.config.auto_center, atlas_size = project.config.atlas_size},
     }
 
     background_image := rl.GenImageChecked(i32(readable.config.atlas_size), i32(readable.config.atlas_size), i32(readable.config.atlas_size) / 32, i32(readable.config.atlas_size) / 32, rl.LIGHTGRAY, rl.GRAY)
@@ -117,7 +115,7 @@ create_new_project :: proc(name: string, atlas_size: int, copy_files, auto_cente
         version = CURRENT_PROJECT_VERSION,
         name = name,
         file = project_file,
-        config = {assets_dir = DEFAULT_PROJECT_ASSETS, copy_files = copy_files, auto_center = auto_center, atlas_size = atlas_size},
+        config = {copy_files = copy_files, auto_center = auto_center, atlas_size = atlas_size},
     }
 
     atlas_to_create: Atlas = {
@@ -150,7 +148,7 @@ load_project :: proc(filename: string) -> (Project, Project_Error) {
                 sprite_file: string
 
                 if new_project.config.copy_files {
-                    sprite_file = strings.concatenate({new_project.working_directory, new_project.config.assets_dir, filepath.SEPARATOR_STRING, sprite.file}, context.temp_allocator)
+                    sprite_file = strings.concatenate({new_project.working_directory, DEFAULT_PROJECT_ASSETS, filepath.SEPARATOR_STRING, sprite.file}, context.temp_allocator)
                 } else {
                     sprite_file = sprite.file
                 }
@@ -180,7 +178,6 @@ load_project :: proc(filename: string) -> (Project, Project_Error) {
 unload_project :: proc(project: ^Project) {
     delete(project.name)
     delete(project.file)
-    delete(project.config.assets_dir)
 
     for atlas, atlas_index in project.atlas {
         rl.TraceLog(.DEBUG, "[DELETE] Deleting atlas[%d] %s", atlas_index, atlas.name)

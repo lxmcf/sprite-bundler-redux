@@ -206,7 +206,7 @@ handle_dropped_files :: proc(project: ^common.Project) {
                     }
 
                     path = strings.clone_to_cstring(filename, context.temp_allocator)
-                    export_path := strings.concatenate({project.working_directory, project.config.assets_dir, filepath.SEPARATOR_STRING, filename}, context.temp_allocator)
+                    export_path := strings.concatenate({project.working_directory, common.DEFAULT_PROJECT_ASSETS, filepath.SEPARATOR_STRING, filename}, context.temp_allocator)
 
                     rl.ExportImage(image, strings.clone_to_cstring(export_path, context.temp_allocator))
                 }
@@ -379,15 +379,13 @@ draw_editor_gui :: proc(project: ^common.Project) {
     rl.GuiDisableTooltip()
 
     if ctx.is_atlas_rename {
-        @(static)
-        anchor := rl.Vector2{172, 36}
+        @(static) anchor := rl.Vector2{172, 36}
 
         if rl.GuiWindowBox({anchor.x, anchor.y, 256, 80}, "Rename Atlas") == 1 {
             ctx.is_atlas_rename = false
         }
 
-        @(static)
-        edit: bool
+        @(static) edit: bool
 
         // NOTE: WTF is this?
         if rl.GuiTextBox({anchor.x + 4, anchor.y + 28, 248, 20}, cstring(rawptr(&ctx.atlas_name_buffer)), 64, edit) {
@@ -420,15 +418,13 @@ draw_editor_gui :: proc(project: ^common.Project) {
     }
 
     if ctx.is_sprite_rename {
-        @(static)
-        anchor := rl.Vector2{172, 36}
+        @(static) anchor := rl.Vector2{172, 36}
 
         if rl.GuiWindowBox({anchor.x, anchor.y, 256, 80}, "Rename Sprite") == 1 {
             ctx.is_sprite_rename = false
         }
 
-        @(static)
-        edit: bool
+        @(static) edit: bool
 
         // NOTE: WTF is this?
         if rl.GuiTextBox({anchor.x + 4, anchor.y + 28, 248, 20}, cstring(rawptr(&ctx.sprite_name_buffer)), 64, edit) {

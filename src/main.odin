@@ -59,7 +59,6 @@ main :: proc() {
             scenes.unload_current_scene(current_scene)
             current_scene = next_scene
             scenes.init_current_scene(current_scene)
-            rl.TraceLog(.INFO, "Yeet?")
         }
 
         free_all(context.temp_allocator)
