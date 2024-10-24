@@ -1,5 +1,7 @@
 package project_picker
 
+import "core:path/filepath"
+
 import rl "vendor:raylib"
 
 WINDOW_WIDTH :: 640
@@ -26,4 +28,13 @@ Project_List_Item :: struct {
     name:      string,
     directory: string,
     file:      string,
+}
+
+load_directory_of_files :: proc(pattern: string) -> []string {
+    matches, err := filepath.glob(pattern)
+    if err == .Syntax_Error {
+        rl.TraceLog(.ERROR, "FILE: Invalid syntax: %s", pattern)
+    }
+
+    return matches
 }

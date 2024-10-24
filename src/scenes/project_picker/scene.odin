@@ -42,10 +42,12 @@ init_scene :: proc() {
         }
 
         root := json_data.(json.Object)
+        index := strings.last_index_any(match, filepath.SEPARATOR_STRING)
 
         item: Project_List_Item = {
-            file = strings.clone(match),
-            name = strings.clone(root["name"].(json.String)),
+            file      = strings.clone(match),
+            name      = strings.clone(root["name"].(json.String)),
+            directory = strings.clone(match[:index]),
         }
 
         append(&ctx.project_cstrings, strings.clone_to_cstring(item.name))
@@ -57,6 +59,7 @@ unload_scene :: proc() {
     for project in ctx.projects {
         delete(project.name)
         delete(project.file)
+        delete(project.directory)
     }
 
     delete(ctx.projects)
@@ -82,6 +85,7 @@ update_scene :: proc(project: ^common.Project) -> common.Application_Scene {
 
     if ctx.load_project {
         project^, _ = common.load_project(ctx.projects[ctx.list_active].file)
+        next_scene = .Editor
     }
 
     if ctx.delete_project {
@@ -100,6 +104,7 @@ update_scene :: proc(project: ^common.Project) -> common.Application_Scene {
 
             if os.is_file(project_file_path) {
                 project^, _ = common.load_project(project_file_path)
+                next_scene = .Editor
             }
             break
 

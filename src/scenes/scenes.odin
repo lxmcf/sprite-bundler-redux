@@ -15,7 +15,7 @@ init_current_scene :: proc(scene: common.Application_Scene) {
     }
 }
 
-update_current_scene :: proc(scene: common.Application_Scene, project: ^common.Project) {
+update_current_scene :: proc(scene: common.Application_Scene, project: ^common.Project) -> common.Application_Scene {
     next_scene := scene
 
     switch scene {
@@ -25,6 +25,8 @@ update_current_scene :: proc(scene: common.Application_Scene, project: ^common.P
     case .Project_Picker:
         next_scene = project_picker.update_scene(project)
     }
+
+    return next_scene
 }
 
 draw_current_scene :: proc(scene: common.Application_Scene, project: ^common.Project) {

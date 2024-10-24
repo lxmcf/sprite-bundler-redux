@@ -31,8 +31,8 @@ main :: proc() {
     max_fps := rl.GetMonitorRefreshRate(rl.GetCurrentMonitor())
     rl.SetTargetFPS(max_fps <= 0 ? FPS_MINIMUM : max_fps)
 
-    if !os.is_dir("project_picker") {
-        os.make_directory("project_picker")
+    if !os.is_dir("projects") {
+        os.make_directory("projects")
     }
 
     current_scene := common.Application_Scene.Project_Picker
@@ -43,7 +43,7 @@ main :: proc() {
     defer scenes.unload_current_scene(current_scene)
 
     for !rl.WindowShouldClose() {
-        scenes.update_current_scene(current_scene, &current_project)
+        next_scene := scenes.update_current_scene(current_scene, &current_project)
 
         rl.BeginDrawing()
         defer rl.EndDrawing()
@@ -55,18 +55,11 @@ main :: proc() {
             db.draw_fps()
         }
 
-        if current_project.is_loaded && current_scene != .Editor {
+        if next_scene != current_scene {
             scenes.unload_current_scene(current_scene)
-            current_scene = .Editor
-
+            current_scene = next_scene
             scenes.init_current_scene(current_scene)
-        }
-
-        if !current_project.is_loaded && current_scene != .Project_Picker {
-            scenes.unload_current_scene(current_scene)
-            current_scene = .Project_Picker
-
-            scenes.init_current_scene(current_scene)
+            rl.TraceLog(.INFO, "Yeet?")
         }
 
         free_all(context.temp_allocator)
