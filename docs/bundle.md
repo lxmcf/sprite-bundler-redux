@@ -1,16 +1,16 @@
 # Bundle File Structure
 
-The sprite bundle structure (LSPX) is very simple, all data is aligned to be divisible by 4; refered to as a 'chunk', meaning all integers and floats are 32 bit, file structure is very loosely inspired by [rres](https://github.com/raysan5/rres)
+The sprite bundle structure (LSPX) is very simple, all data is aligned to 4 bytes; refered to as a 'chunk', meaning all integers and floats are 32 bit, file structure is very loosely inspired by [rres](https://github.com/raysan5/rres)
 
 The structure is split into different types of 'blocks', as listed below...
-`LSPX` - Header (20 BYTES)
-`SPRT` - Sprite (52 Bytes*)
-`ATLS` - Atlas (16 Bytes*)
+`LSPX` - Header (20 Bytes)
+`SPRT` - Sprite (52 Bytes^)
+`ATLS` - Atlas (16 Bytes^)
 
-Using this information you can easily follow [this guide](/docs/make-loader.md) to build a loader for your use case, each
+Using this information you can easily follow [this guide](/docs/make-loader.md) to build a loader for your potential needs and/or integrations.
 
 > [!NOTE]
-> Block size marked with * indicates they will contain data than can also be of variable length!
+> Block size marked with ^ indicates they will contain data than can also be of variable length!
 
 Below you will see the data layout for each type of block...
 

@@ -3,7 +3,7 @@
 Building a loader for sprite bundles is a very easy task, all data is written in 4 byte chunks and each section (Atlas, Sprite, Etc) is identified by a simple [FourCC](https://en.wikipedia.org/wiki/FourCC) style code from one of the below...
 - `LSPX` - Bundle header, contains basic information for the bundle and should always be first!
 - `SPRT` - Sprite, containing all information for a sprite
-- `ATLS` - Atlas, containing all information for a sprite
+- `ATLS` - Atlas, containing all information for a texture atlas
 - `BEOF` - Bundle end of file, identifies where the end of file is, should ALWAYS be at the end!
 
 For a more in depth breakdown of the file structure and what order to read data; please see the [bundle structure](/docs/bundle.md) documentation, some simple loaders can also be found in the [loaders](/loaders) directory!
@@ -40,7 +40,7 @@ function LoadBundle () {
 
 Nice and simple! However the complexity comes in interpreting the data for your graphics library whether that be raylib, SDL or intergrating into an existing game engine.
 
-With all data being aligned to 4 bytes; it is easy to skip over data you may need, for example you may not need the name of each atlas to be loaded; simply skip over that data!
+With all data being aligned to 4 bytes; it is easy to skip over data you may not need, for example you may not need the name of each atlas to be loaded; simply skip over that data!
 
 ```js
 // Step by Step Example
@@ -115,4 +115,4 @@ function LoadBundle () {
 Following these examples you will be able to load all the data in from a sprite bundle and store this in your preferred way.
 
 > [!NOTE]
-> While the official sprite bundler will export LSPX, ATLS, SPRT, BEOF; in that order, only LSPX and BEOF are required to be in that order, sprites and atlas' do not need to be stored in any order!
+> While the official sprite bundler will export LSPX, ATLS[], SPRT[], BEOF; in that order, only LSPX and BEOF are required to be in that order, sprites and atlas' do not need to be stored in any order!
