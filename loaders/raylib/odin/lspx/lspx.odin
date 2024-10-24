@@ -46,7 +46,9 @@ LoadBundle :: proc(filename: string) -> (Bundle, bool) {
         position, _ := os.seek(handle, 0, os.SEEK_CUR)
         offset := position % CHUNK_SIZE
 
-        if offset > 0 do os.seek(handle, CHUNK_SIZE - offset, os.SEEK_CUR)
+        if offset > 0 {
+            os.seek(handle, CHUNK_SIZE - offset, os.SEEK_CUR)
+        }
     }
 
     bundle: Bundle
@@ -162,7 +164,9 @@ IsBundleReady :: proc(bundle: Bundle) -> bool {
 }
 
 DrawSprite :: proc(sprite: string, position: rl.Vector2, color: rl.Color = rl.WHITE) {
-    if !IsBundleReady(active_bundle) do return
+    if !IsBundleReady(active_bundle) {
+        return
+    }
 
     current_sprite := active_bundle.sprites[sprite]
     current_atlas := active_bundle.atlas[current_sprite.atlas]
@@ -173,7 +177,9 @@ DrawSprite :: proc(sprite: string, position: rl.Vector2, color: rl.Color = rl.WH
 }
 
 DrawSpriteEx :: proc(sprite: string, position: rl.Vector2, scale: f32, rotation: f32, color: rl.Color = rl.WHITE) {
-    if !IsBundleReady(active_bundle) do return
+    if !IsBundleReady(active_bundle) {
+        return
+    }
 
     current_sprite := active_bundle.sprites[sprite]
     current_atlas := active_bundle.atlas[current_sprite.atlas]
@@ -184,7 +190,9 @@ DrawSpriteEx :: proc(sprite: string, position: rl.Vector2, scale: f32, rotation:
 }
 
 DrawSpritePro :: proc(sprite: string, position: rl.Vector2, scale: rl.Vector2, rotation: f32, flip: FlipMode = {}, color: rl.Color = rl.WHITE) {
-    if !IsBundleReady(active_bundle) do return
+    if !IsBundleReady(active_bundle) {
+        return
+    }
 
     current_sprite := active_bundle.sprites[sprite]
     current_atlas := active_bundle.atlas[current_sprite.atlas]
@@ -192,14 +200,21 @@ DrawSpritePro :: proc(sprite: string, position: rl.Vector2, scale: rl.Vector2, r
     source := current_sprite.source
     destination := rl.Rectangle{position.x, position.y, current_sprite.source.width * scale.x, current_sprite.source.height * scale.y}
 
-    if .Flip_Horizontal in flip do source.width *= -1
-    if .Flip_Vertical in flip do source.height *= -1
+    if .Flip_Horizontal in flip {
+        source.width *= -1
+    }
+
+    if .Flip_Vertical in flip {
+        source.height *= -1
+    }
 
     rl.DrawTexturePro(current_atlas.texture, source, destination, current_sprite.origin * scale, rotation, color)
 }
 
 DrawSpriteNineSlice :: proc(sprite: string, bounds: rl.Rectangle, color: rl.Color = rl.WHITE) {
-    if !IsBundleReady(active_bundle) do return
+    if !IsBundleReady(active_bundle) {
+        return
+    }
 
     current_sprite := active_bundle.sprites[sprite]
     current_atlas := active_bundle.atlas[current_sprite.atlas]

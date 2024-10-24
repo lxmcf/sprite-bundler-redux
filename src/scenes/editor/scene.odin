@@ -22,7 +22,9 @@ init_scene :: proc() {
 
 unload_scene :: proc() {}
 
-update_scene :: proc(project: ^common.Project) {
+update_scene :: proc(project: ^common.Project) -> common.Application_Scene {
+    next_scene: common.Application_Scene = .Editor
+
     if ctx.current_atlas == nil {
         ctx.current_atlas = &project.atlas[0]
     }
@@ -40,7 +42,7 @@ update_scene :: proc(project: ^common.Project) {
 
     if rl.GetMouseY() < i32(TOOLBAR_HEIGHT) || ctx.is_dialog_open {
         rl.SetMouseCursor(.DEFAULT)
-        return
+        return next_scene
     }
 
     mouse_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), ctx.camera)
@@ -81,6 +83,8 @@ update_scene :: proc(project: ^common.Project) {
     }
 
     rl.SetMouseCursor(ctx.cursor)
+
+    return next_scene
 }
 
 draw_scene :: proc(project: ^common.Project) {

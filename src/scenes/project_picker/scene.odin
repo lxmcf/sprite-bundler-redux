@@ -68,7 +68,9 @@ unload_scene :: proc() {
     delete(ctx.project_cstrings)
 }
 
-update_scene :: proc(project: ^common.Project) {
+update_scene :: proc(project: ^common.Project) -> common.Application_Scene {
+    next_scene: common.Application_Scene = .Project_Picker
+
     if rl.IsFileDropped() {
         files := rl.LoadDroppedFiles()
         defer rl.UnloadDroppedFiles(files)
@@ -105,6 +107,8 @@ update_scene :: proc(project: ^common.Project) {
             fmt.println("ERROR: PROJECT:", err)
         }
     }
+
+    return next_scene
 }
 
 draw_scene :: proc() {

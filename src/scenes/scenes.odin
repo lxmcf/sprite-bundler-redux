@@ -5,13 +5,8 @@ import "../common"
 import "editor"
 import "project_picker"
 
-Application_Scene :: enum {
-    Project_Picker,
-    Editor,
-}
-
-init_current_scene :: proc(screen: Application_Scene) {
-    switch screen {
+init_current_scene :: proc(scene: common.Application_Scene) {
+    switch scene {
     case .Editor:
         editor.init_scene()
 
@@ -20,18 +15,20 @@ init_current_scene :: proc(screen: Application_Scene) {
     }
 }
 
-update_current_scene :: proc(screen: Application_Scene, project: ^common.Project) {
-    switch screen {
+update_current_scene :: proc(scene: common.Application_Scene, project: ^common.Project) {
+    next_scene := scene
+
+    switch scene {
     case .Editor:
-        editor.update_scene(project)
+        next_scene = editor.update_scene(project)
 
     case .Project_Picker:
-        project_picker.update_scene(project)
+        next_scene = project_picker.update_scene(project)
     }
 }
 
-draw_current_scene :: proc(screen: Application_Scene, project: ^common.Project) {
-    switch screen {
+draw_current_scene :: proc(scene: common.Application_Scene, project: ^common.Project) {
+    switch scene {
     case .Editor:
         editor.draw_scene(project)
 
@@ -40,8 +37,8 @@ draw_current_scene :: proc(screen: Application_Scene, project: ^common.Project) 
     }
 }
 
-unload_current_scene :: proc(screen: Application_Scene) {
-    switch screen {
+unload_current_scene :: proc(scene: common.Application_Scene) {
+    switch scene {
     case .Editor:
         editor.unload_scene()
 

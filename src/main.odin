@@ -35,7 +35,7 @@ main :: proc() {
         os.make_directory("project_picker")
     }
 
-    current_scene := scenes.Application_Scene.Project_Picker
+    current_scene := common.Application_Scene.Project_Picker
     current_project: common.Project
     defer common.unload_project(&current_project)
 
