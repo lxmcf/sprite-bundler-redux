@@ -35,10 +35,12 @@ update_scene :: proc(project: ^common.Project) -> common.Application_Scene {
 
     ctx.is_dialog_open = ctx.is_atlas_rename || ctx.is_sprite_rename
 
-    update_camera()
+    if !ctx.is_dialog_open {
+        update_camera()
 
-    handle_shortcuts(project)
-    handle_dropped_files(project)
+        handle_shortcuts(project)
+        handle_dropped_files(project)
+    }
 
     if rl.GetMouseY() < i32(TOOLBAR_HEIGHT) || ctx.is_dialog_open {
         rl.SetMouseCursor(.DEFAULT)

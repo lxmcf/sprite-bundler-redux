@@ -2,6 +2,7 @@ package editor
 
 import "core:crypto"
 import "core:encoding/uuid"
+import "core:math"
 import "core:os"
 import "core:path/filepath"
 import "core:strings"
@@ -39,6 +40,7 @@ Editor_Context :: struct {
     create_new_atlas:      bool,
     delete_current_atlas:  bool,
     delete_current_sprite: bool,
+    should_textbox_edit:   bool,
 }
 
 update_camera :: proc() {
@@ -157,10 +159,11 @@ handle_shortcuts :: proc(project: ^common.Project) {
         if rl.IsKeyPressed(.R) {
             if ctx.selected_sprite != nil {
                 for i in 0 ..< len(ctx.selected_sprite.name) {
-                    ctx.atlas_name_buffer[i] = ctx.selected_sprite.name[i]
+                    ctx.sprite_name_buffer[i] = ctx.selected_sprite.name[i]
                 }
 
                 ctx.is_sprite_rename = true
+                ctx.should_textbox_edit = true
             } else {
                 for i in 0 ..< len(ctx.current_atlas.name) {
                     ctx.atlas_name_buffer[i] = ctx.current_atlas.name[i]
@@ -341,15 +344,30 @@ draw_editor_gui :: proc(project: ^common.Project) {
             ctx.should_edit_origin = true
         }
 
-        rl.GuiSetTooltip("Rotate Sprite 90 Degrees")
+        if !project.config.copy_files {
+            rl.GuiLock()
+        }
+
+        rl.GuiSetTooltip("Rotate Sprite 90 Degrees (CW)")
         if rl.GuiButton({116, 4, 24, 24}, "#76#") {
             rl.ImageRotateCW(&ctx.selected_sprite.image)
             ctx.selected_sprite.source.width = f32(ctx.selected_sprite.image.width)
             ctx.selected_sprite.source.height = f32(ctx.selected_sprite.image.height)
 
-            // TODO: Rotate origin point
-            ctx.selected_sprite.origin = {}
+            // TODO: Rotate origin point properly
+            ctx.selected_sprite.origin = rl.Vector2Rotate(ctx.selected_sprite.origin, 90 * rl.DEG2RAD)
+            ctx.selected_sprite.origin = {math.abs(ctx.selected_sprite.origin.x), math.abs(ctx.selected_sprite.origin.y)}
+
+            // Save Sprite
+            export_path := strings.concatenate({project.working_directory, common.DEFAULT_PROJECT_ASSETS, filepath.SEPARATOR_STRING, ctx.selected_sprite.file}, context.temp_allocator)
+            rl.ExportImage(ctx.selected_sprite.image, strings.clone_to_cstring(export_path, context.temp_allocator))
+
             should_regenerate_atlas = true
+        }
+
+        if !project.config.copy_files {
+            rl.DrawRectangleRec({116, 4, 24, 24}, rl.Fade(rl.RAYWHITE, 0.5))
+            rl.GuiUnlock()
         }
 
         rl.GuiSetTooltip("Flip Sprite Horizontally")
@@ -385,11 +403,9 @@ draw_editor_gui :: proc(project: ^common.Project) {
             ctx.is_atlas_rename = false
         }
 
-        @(static) edit: bool
-
         // NOTE: WTF is this?
-        if rl.GuiTextBox({anchor.x + 4, anchor.y + 28, 248, 20}, cstring(rawptr(&ctx.atlas_name_buffer)), 64, edit) {
-            edit = !edit
+        if rl.GuiTextBox({anchor.x + 4, anchor.y + 28, 248, 20}, cstring(rawptr(&ctx.atlas_name_buffer)), 64, ctx.should_textbox_edit) {
+            ctx.should_textbox_edit = !ctx.should_textbox_edit
         }
 
         rl.GuiEnableTooltip()
@@ -401,7 +417,7 @@ draw_editor_gui :: proc(project: ^common.Project) {
             delete(ctx.current_atlas.name)
             ctx.current_atlas.name = strings.clone_from_cstring_bounded(temp_cstring, len(temp_cstring))
 
-            edit = false
+            ctx.should_textbox_edit = false
             ctx.is_atlas_rename = false
 
             for i in 0 ..< len(temp_cstring) {
@@ -424,11 +440,9 @@ draw_editor_gui :: proc(project: ^common.Project) {
             ctx.is_sprite_rename = false
         }
 
-        @(static) edit: bool
-
         // NOTE: WTF is this?
-        if rl.GuiTextBox({anchor.x + 4, anchor.y + 28, 248, 20}, cstring(rawptr(&ctx.sprite_name_buffer)), 64, edit) {
-            edit = !edit
+        if rl.GuiTextBox({anchor.x + 4, anchor.y + 28, 248, 20}, cstring(rawptr(&ctx.sprite_name_buffer)), 64, ctx.should_textbox_edit) {
+            ctx.should_textbox_edit = !ctx.should_textbox_edit
         }
 
         rl.GuiEnableTooltip()
@@ -440,7 +454,7 @@ draw_editor_gui :: proc(project: ^common.Project) {
             delete(ctx.selected_sprite.name)
             ctx.selected_sprite.name = strings.clone_from_cstring_bounded(temp_cstring, len(temp_cstring))
 
-            edit = false
+            ctx.should_textbox_edit = false
             ctx.is_sprite_rename = false
 
             for i in 0 ..< len(temp_cstring) {
