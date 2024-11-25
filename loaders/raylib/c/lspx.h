@@ -49,7 +49,7 @@ Bundle LoadBundle (const char* filename);
 void SetActiveBundle (Bundle* bundle);
 void UnloadBundle (Bundle bundle);
 
-int IsBundleReady (Bundle bundle);
+int IsBundleValid (Bundle bundle);
 
 #if defined(LSPX_IMPLEMENTATION) || defined(LSPX_IMPL)
 
@@ -129,7 +129,6 @@ void DrawSpritePro (int index, Vector2 position, Vector2 scale, float rotation, 
         return;
 
     Sprite2D* sprite = &lspx__active_bundle->sprite[index];
-
     Rectangle source = sprite->source;
 
     if (flip_mode | FLIP_HORIZONTAL)
@@ -179,19 +178,19 @@ void DrawSpriteNineSlice (int index, Rectangle bounds, Color color) {
     Rectangle bottom_right  = CLITERAL (Rectangle){source.x + (cell_width * 2.0f), source.y + (cell_height * 2.0f), cell_width, cell_height};
 
     // Corners
-    DrawTextureRec (atlas, top_left, {bounds.x, bounds.y}, color);
-    DrawTextureRec (atlas, top_right, {bounds.x + (bounds.width - cell_width), bounds.y}, color);
-    DrawTextureRec (atlas, bottom_left, {bounds.x, bounds.y + (bounds.height - cell_height)}, color);
-    DrawTextureRec (atlas, bottom_right, {bounds.x + (bounds.width - cell_width), bounds.y + (bounds.height - cell_height)}, color);
+    DrawTextureRec (atlas, top_left, CLITERAL (Vector2){bounds.x, bounds.y}, color);
+    DrawTextureRec (atlas, top_right, CLITERAL (Vector2){bounds.x + (bounds.width - cell_width), bounds.y}, color);
+    DrawTextureRec (atlas, bottom_left, CLITERAL (Vector2){bounds.x, bounds.y + (bounds.height - cell_height)}, color);
+    DrawTextureRec (atlas, bottom_right, CLITERAL (Vector2){bounds.x + (bounds.width - cell_width), bounds.y + (bounds.height - cell_height)}, color);
 
     // Connectors
-    DrawTexturePro (atlas, top_middle, {bounds.x + cell_width, bounds.y, bounds.width - (cell_width * 2.0f), cell_height}, {}, 0, color);
-    DrawTexturePro (atlas, middle_left, {bounds.x, bounds.y + cell_height, cell_width, bounds.height - (cell_height * 2.0f)}, {}, 0, color);
-    DrawTexturePro (atlas, middle_right, {bounds.x + bounds.width - cell_width, bounds.y + cell_height, cell_width, bounds.height - (cell_height * 2.0f)}, {}, 0, color);
-    DrawTexturePro (atlas, bottom_middle, {bounds.x + cell_width, bounds.y + (bounds.height - cell_height), bounds.width - (cell_width * 2.0f), cell_height}, {}, 0, color);
+    DrawTexturePro (atlas, top_middle, CLITERAL (Rectangle){bounds.x + cell_width, bounds.y, bounds.width - (cell_width * 2.0f), cell_height}, CLITERAL (Vector2){}, 0.0f, color);
+    DrawTexturePro (atlas, middle_left, CLITERAL (Rectangle){bounds.x, bounds.y + cell_height, cell_width, bounds.height - (cell_height * 2.0f)}, CLITERAL (Vector2){}, 0.0f, color);
+    DrawTexturePro (atlas, middle_right, CLITERAL (Rectangle){bounds.x + bounds.width - cell_width, bounds.y + cell_height, cell_width, bounds.height - (cell_height * 2.0f)}, CLITERAL (Vector2){}, 0.0f, color);
+    DrawTexturePro (atlas, bottom_middle, CLITERAL (Rectangle){bounds.x + cell_width, bounds.y + (bounds.height - cell_height), bounds.width - (cell_width * 2.0f), cell_height}, CLITERAL (Vector2){}, 0.0f, color);
 
     // Centre
-    DrawTexturePro (atlas, middle_middle, {bounds.x + cell_width, bounds.y + cell_height, bounds.width - (cell_width * 2.0f), bounds.height - (cell_height * 2.0f)}, {}, 0, color);
+    DrawTexturePro (atlas, middle_middle, CLITERAL (Rectangle){bounds.x + cell_width, bounds.y + cell_height, bounds.width - (cell_width * 2.0f), bounds.height - (cell_height * 2.0f)}, CLITERAL (Vector2){}, 0.0f, color);
 }
 
 Vector2 GetSpriteOrigin (int index) {
@@ -265,18 +264,11 @@ Bundle LoadBundle (const char* filename) {
         return bundle;
     }
 
-    TraceLog (LOG_DEBUG, "--> Found header at chunk[%d]", ftell (handle) / LSPX__BUNDLE_ALIGNMENT);
-
     int bundle_version, atlas_count, sprite_count, atlas_size;
     fread (&bundle_version, sizeof (int), 1, handle);
     fread (&atlas_count, sizeof (int), 1, handle);
     fread (&sprite_count, sizeof (int), 1, handle);
     fread (&atlas_size, sizeof (int), 1, handle);
-
-    TraceLog (LOG_DEBUG, "\t\tBundle Version: %d", bundle_version);
-    TraceLog (LOG_DEBUG, "\t\tAtlas Count:    %d", atlas_count);
-    TraceLog (LOG_DEBUG, "\t\tSprite Count:   %d", sprite_count);
-    TraceLog (LOG_DEBUG, "\t\tAtlas Size:     %d", atlas_size);
 
     // Create Bundle
     bundle.sprite       = (Sprite2D*)calloc (sprite_count, sizeof (Sprite2D));
@@ -291,8 +283,6 @@ Bundle LoadBundle (const char* filename) {
         fread (header_buffer, sizeof (char), LSPX__BUNDLE_ALIGNMENT, handle);
 
         if (strncmp (header_buffer, LSPX__SPRITE_HEADER, 4) == 0) {
-            TraceLog (LOG_DEBUG, "--> Found sprite at chunk[%d]", ftell (handle) / LSPX__BUNDLE_ALIGNMENT);
-
             Sprite2D* current_sprite = &bundle.sprite[sprite_loaded];
 
             int frame_count, atlas_name_length, name_length;
@@ -321,19 +311,11 @@ Bundle LoadBundle (const char* filename) {
             fread (&current_sprite->origin.x, sizeof (float), 1, handle);
             fread (&current_sprite->origin.y, sizeof (float), 1, handle);
 
-            TraceLog (LOG_DEBUG, "\t\tFrame Count:    %d", frame_count);
-            TraceLog (LOG_DEBUG, "\t\tAtlas Index:    %d", current_sprite->atlas_index);
-            TraceLog (LOG_DEBUG, "\t\tSprite Name:    %s", current_sprite->name);
-            TraceLog (LOG_DEBUG, "\t\tSprite Source:  [ %.f, %.f, %.f, %.f] ", UNWRAP_RECTANGLE (current_sprite->source));
-            TraceLog (LOG_DEBUG, "\t\tSprite Origin:  [ %.f, %.f ] ", UNWRAP_VECTOR2 (current_sprite->origin));
-
             sprite_loaded++;
             continue;
         }
 
         if (strncmp (header_buffer, LSPX__ATLAS_HEADER, 4) == 0) {
-            TraceLog (LOG_DEBUG, "--> Found atlas at chunk[%d]", ftell (handle) / LSPX__BUNDLE_ALIGNMENT);
-
             int sprite_count, name_length, atlas_data_size;
             char* name;
 
@@ -345,9 +327,6 @@ Bundle LoadBundle (const char* filename) {
             fread (name, sizeof (char), name_length, handle);
             falign (handle, LSPX__BUNDLE_ALIGNMENT);
             name[name_length] = '\0';
-
-            TraceLog (LOG_DEBUG, "\t\tSprite Count:   %d", sprite_count);
-            TraceLog (LOG_DEBUG, "\t\tAtlas Name:     %s", name);
 
             fread (&atlas_data_size, sizeof (int), 1, handle);
 
@@ -368,10 +347,6 @@ Bundle LoadBundle (const char* filename) {
     }
 
     if (bundle.sprite_count != sprite_loaded || bundle.atlas_count != atlas_loaded) {
-        TraceLog (LOG_ERROR, "Sprite or atlas count did not match, free'd bundle!");
-        TraceLog (LOG_ERROR, "Sprites: %d/%d", sprite_loaded, bundle.sprite_count);
-        TraceLog (LOG_ERROR, "Atlas':  %d/%d", atlas_loaded, bundle.atlas_count);
-
         UnloadBundle (bundle);
     }
 
@@ -387,7 +362,7 @@ void SetActiveBundle (Bundle* bundle) {
 }
 
 void UnloadBundle (Bundle bundle) {
-    if (IsBundleReady (bundle)) {
+    if (IsBundleValid (bundle)) {
         for (int i = 0; i < bundle.atlas_count; i++)
             UnloadTexture (bundle.atlas[i]);
 
@@ -398,7 +373,7 @@ void UnloadBundle (Bundle bundle) {
     }
 }
 
-int IsBundleReady (Bundle bundle) {
+int IsBundleValid (Bundle bundle) {
     return bundle.atlas_count > 0 && bundle.sprite_count > 0;
 }
 

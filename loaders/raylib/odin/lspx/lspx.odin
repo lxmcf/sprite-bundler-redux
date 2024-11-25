@@ -159,12 +159,12 @@ SetActiveBundle :: proc(bundle: Bundle) {
     active_bundle = bundle
 }
 
-IsBundleReady :: proc(bundle: Bundle) -> bool {
+IsBundleValid :: proc(bundle: Bundle) -> bool {
     return bundle.atlas_count > 0 && bundle.sprite_count > 0
 }
 
 DrawSprite :: proc(sprite: string, position: rl.Vector2, color: rl.Color = rl.WHITE) {
-    if !IsBundleReady(active_bundle) {
+    if !IsBundleValid(active_bundle) {
         return
     }
 
@@ -177,7 +177,7 @@ DrawSprite :: proc(sprite: string, position: rl.Vector2, color: rl.Color = rl.WH
 }
 
 DrawSpriteEx :: proc(sprite: string, position: rl.Vector2, scale: f32, rotation: f32, color: rl.Color = rl.WHITE) {
-    if !IsBundleReady(active_bundle) {
+    if !IsBundleValid(active_bundle) {
         return
     }
 
@@ -190,7 +190,7 @@ DrawSpriteEx :: proc(sprite: string, position: rl.Vector2, scale: f32, rotation:
 }
 
 DrawSpritePro :: proc(sprite: string, position: rl.Vector2, scale: rl.Vector2, rotation: f32, flip: FlipMode = {}, color: rl.Color = rl.WHITE) {
-    if !IsBundleReady(active_bundle) {
+    if !IsBundleValid(active_bundle) {
         return
     }
 
@@ -212,7 +212,7 @@ DrawSpritePro :: proc(sprite: string, position: rl.Vector2, scale: rl.Vector2, r
 }
 
 DrawSpriteNineSlice :: proc(sprite: string, bounds: rl.Rectangle, color: rl.Color = rl.WHITE) {
-    if !IsBundleReady(active_bundle) {
+    if !IsBundleValid(active_bundle) {
         return
     }
 

@@ -28,7 +28,7 @@ int main () {
         BeginDrawing ();
         ClearBackground (RAYWHITE);
 
-        if (IsBundleReady (bundle)) {
+        if (IsBundleValid (bundle)) {
             DrawSpriteEx (current_sprite % bundle.sprite_count, CLITERAL (Vector2){320, 180}, scale, rotation, WHITE);
 
             DrawText ("Press [SPACE] to cycle sprites!", 8, 8, 20, LIGHTGRAY);
