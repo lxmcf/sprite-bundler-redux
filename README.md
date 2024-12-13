@@ -18,13 +18,13 @@
 ---
 
 > [!NOTE]
-> LSPP is in early development and a lot of UI and code is very 'first pass' and `may` get a further pass to clean everything up
+> LSPP is in early development and a lot of UI and code is very 'first pass' and `may` get a further pass to clean everything up.
 
 Sprite Bundler Redux is a ground up rewrite of my old [Sprite Bundler](https://github.com/lxmcf/sprite-bundler) now rewritten in [Odin](https://odin-lang.org/) instead of C!
 
-The original ballooned from a simple project that would easily fit into a single C file to a more complex project driven tool that became unmanagable (Plus I broke it while refactoring), this version maintains the same and even massively expands on the originals functionality.
+The original sprite bundler ballooned from a simple project that would easily fit into a single C file to a more complex project driven tool that became unmanagable (Plus I broke it while refactoring), this version maintains the same; and even massively expands on the originals functionality.
 
-Sprite Bundler Redux can be used to combine several individual textures (Only PNG currently) into 1 or even multiple texture atlas' with source coordinates, origin points and even simple animation frames embeded into a single file to avoid texture swapping with API's for multiple frameworks and even languages. This tool may be more advanced than its original however it is still intended for small games/game james.
+Sprite Bundler Redux can be used to combine several individual textures into 1 or even multiple texture atlas' with source coordinates, origin points and even simple animation frames embeded into a single file to avoid texture swapping with API's for multiple frameworks and even languages. This tool may be more advanced than its original however it is still intended for small games/game james.
 
 ### Compiling
 
