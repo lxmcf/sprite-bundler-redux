@@ -105,5 +105,11 @@ Very! I have not bench marked anything but I am using [stb rect pack](https://gi
 #### Q) What is coming next?
 Not a lot... Or maybe lots; I don't know, you can check the [roadmap](/ROADMAP.md)!
 
+#### Q) What are the types of files in the source directory?
+- c_*: Core
+- t_*: Type
+- u_*: Utility
+- p_*: Platform (OS specific code)
+
 #### Q) Are the new sour skittles better than the old ones?
 No :slightly_smiling_face:
