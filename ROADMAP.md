@@ -2,7 +2,7 @@
 
 ### Version 1.0:
 * [X] Cleaner UI (Drop microui and make a simple gui library)
-* [ ] Code cleanup
+* [X] Code cleanup
 * [ ] Animations
 * [ ] Tilemaps
 * [ ] Versioning system

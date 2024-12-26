@@ -3,7 +3,7 @@ package main
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"
-import "core:strings"
+import str "core:strings"
 
 Project :: struct {
     name:    string,
@@ -13,22 +13,26 @@ Project :: struct {
         strip_whitespace: bool,
         auto_centre:      bool,
     },
+    atlas:   [dynamic]Atlas,
 }
 
-Project_Error :: enum {
+Project_Error :: enum u8 {
     None,
     Invalid_File,
     Failed_Serialisation,
+    Failed_Deserialisation,
 }
 
-unload_project :: proc(#by_ptr project: Project) {
+unload_project :: proc(project: Project) {
     delete(project.file)
     delete(project.name)
+
+    for _ in project.atlas {}
 }
 
-save_project :: proc(#by_ptr project: Project) -> Project_Error {
+save_project :: proc(project: Project) -> Project_Error {
     if os.is_file(project.file) {
-        os.rename(project.file, strings.concatenate({project.file, ".bkp"}, context.temp_allocator))
+        os.rename(project.file, str.concatenate({project.file, ".bkp"}, context.temp_allocator))
     }
 
     options: json.Marshal_Options = {
@@ -46,4 +50,14 @@ save_project :: proc(#by_ptr project: Project) -> Project_Error {
     }
 
     return .None
+}
+
+load_project :: proc(filename: string) -> (project: Project, err: Project_Error) {
+    if project_data, ok := os.read_entire_file(filename, context.temp_allocator); ok {
+        json.unmarshal(project_data, &project)
+    } else {
+        err = .Failed_Deserialisation
+    }
+
+    return
 }

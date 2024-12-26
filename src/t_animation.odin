@@ -1,3 +1,7 @@
 package main
 
-Animation :: struct {}
+Animation :: struct {
+    name:   string,
+    speed:  f32,
+    frames: [dynamic]Rectangle,
+}
