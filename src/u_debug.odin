@@ -12,7 +12,7 @@ FPS_CRITICAL :: #config(DEBUG_FPS_CRITICAL, 30)
 track: mem.Tracking_Allocator
 
 @(private = "file")
-draw_debug: bool = true
+draw_debug: bool
 
 init_allocator :: proc() -> mem.Allocator {
     mem.tracking_allocator_init(&track, context.allocator)

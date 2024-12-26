@@ -24,7 +24,7 @@ Sprite Bundler Redux is a ground up rewrite of my old [Sprite Bundler](https://g
 
 The original sprite bundler ballooned from a simple project that would easily fit into a single C file to a more complex project driven tool that became unmanagable (Plus I broke it while refactoring), this version maintains the same; and even massively expands on the originals functionality.
 
-Sprite Bundler Redux can be used to combine several individual textures into 1 or even multiple texture atlas' with source coordinates, origin points and even simple animation frames embeded into a single file to avoid texture swapping with API's for multiple frameworks and even languages. This tool may be more advanced than its original however it is still intended for small games/game james.
+Sprite Bundler Redux can be used to combine several individual textures into a single texture atlas with source coordinates, origin points and even simple animation frames embeded into a single file to avoid texture swapping with API's for multiple frameworks and even languages. This tool may be more advanced than its original however it is still intended for small games/game james.
 
 ### Compiling
 
@@ -66,12 +66,6 @@ odin build src/ -out:application.exe -collection:bundler=src -vet -min-link-libs
 - Add files to currently open atlas
     - Drop desired files over window, sprites will be sorted and packed automatically
 
-- Manage texture atlas'
-    - Press `CTRL + N` to create a blank texture atlas (All atlas' will be the same size)
-    - Press `CTRL + [` or `CTRL + ]` to navigate between atlas'
-    - Press `CTRL + R` with no sprite selected to rename the current atlas
-    - Press `DELETE` to delete the current atlas
-
 - Camera controls
     - Press `Z` to center camera and reset zoom
     - Middle click or hold `LEFT ALT` and move mouse to pan
@@ -106,8 +100,10 @@ Very! I have not bench marked anything but I am using [stb rect pack](https://gi
 Not a lot... Or maybe lots; I don't know, you can check the [roadmap](/ROADMAP.md)!
 
 #### Q) What are the types of files in the source directory?
-- c_*: Core
-- t_*: Type
+Good question but I hope they will be self explanatory, the idea was taken from the DOOM source code styling...
+
+- c_*: Core/Engine
+- t_*: Type and its related procedures
 - u_*: Utility
 - p_*: Platform (OS specific code)
 

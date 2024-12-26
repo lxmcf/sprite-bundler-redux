@@ -14,6 +14,8 @@ FOURCC_TILESET :: "TILE"
 PROJECT_DIR_TEXTURES :: "textures"
 PROJECT_DIR_FONTS :: "fonts"
 
+CONFIG_FILENAME :: "lspp.conf"
+
 Vector2 :: [2]f32
 Vector2i :: [2]int
 

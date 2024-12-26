@@ -20,12 +20,32 @@ main :: proc() {
     rl.SetTargetFPS(max_fps <= 0 ? FPS_MINIMUM : max_fps)
 
     project: Project
+    project.working_directory = "test/"
+    project.file = "test.lspp"
+    project.atlas_size = 1024
+    defer unload_project(&project)
+
+    ctx: Editor_Context
+
+    init_editor(&ctx)
 
     for !rl.WindowShouldClose() {
-        handle_file_drop(&project)
+        update_editor(&ctx, &project)
 
-        if rl.IsKeyReleased(.F1) {
-            save_project(project)
+        when ODIN_DEBUG {
+            if rl.IsKeyDown(.LEFT_CONTROL) {
+                if rl.IsKeyPressed(.ONE) {
+                    ctx.editor_mode = .None
+                }
+
+                if rl.IsKeyPressed(.TWO) {
+                    ctx.editor_mode = .Edit_Texture
+                }
+
+                if rl.IsKeyPressed(.THREE) {
+                    ctx.editor_mode = .Import
+                }
+            }
         }
 
         rl.BeginDrawing()
@@ -33,7 +53,11 @@ main :: proc() {
 
         rl.ClearBackground(rl.DARKGRAY)
 
-        draw_editor_toolbar()
+        rl.BeginMode2D(ctx.camera)
+        draw_editor(ctx, project)
+        rl.EndMode2D()
+
+        draw_editor_ui(ctx)
 
         when ODIN_DEBUG {
             draw_fps()
