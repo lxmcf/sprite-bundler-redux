@@ -30,6 +30,28 @@ Project_Error :: enum u8 {
     Failed_Deserialisation,
 }
 
+create_project :: proc(name: string, atlas_size: int) {
+    project: Project
+    defer unload_project(&project)
+
+    project.name = str.clone(name)
+    project.atlas_size = atlas_size
+    project.version = PROJECT_VERSION
+    project.working_directory = str.concatenate({PROJECT_DIRECTORY, fp.SEPARATOR_STRING, name, fp.SEPARATOR_STRING})
+    project.file = str.concatenate({project.working_directory, PROJECT_FILENAME})
+
+    texture_directory := str.concatenate({project.working_directory, PROJECT_DIR_TEXTURES}, context.temp_allocator)
+    font_directory := str.concatenate({project.working_directory, PROJECT_DIR_FONTS}, context.temp_allocator)
+    export_directory := str.concatenate({project.working_directory, PROJECT_DIR_EXPORTS}, context.temp_allocator)
+
+    os.make_directory(project.working_directory)
+    os.make_directory(texture_directory)
+    os.make_directory(font_directory)
+    os.make_directory(export_directory)
+
+    save_project(project)
+}
+
 unload_project :: proc(project: ^Project) {
     delete(project.file)
     delete(project.name)
@@ -44,6 +66,12 @@ unload_project :: proc(project: ^Project) {
     }
 
     delete(project.textures)
+}
+
+project_exists :: proc(name: string) -> bool {
+    file := str.concatenate({PROJECT_DIRECTORY, fp.SEPARATOR_STRING, name, fp.SEPARATOR_STRING, PROJECT_FILENAME}, context.temp_allocator)
+
+    return os.is_file(file)
 }
 
 save_project :: proc(project: Project) -> (err: Project_Error) {
@@ -72,20 +100,20 @@ load_project :: proc(filename: string) -> (project: Project, err: Project_Error)
     if project_data, ok := os.read_entire_file(filename, context.temp_allocator); ok {
         json_err := json.unmarshal(project_data, &project)
 
-        if json_err == nil {
-            fmt.eprintfln("ERROR: PROJECT: Failed to deserialise project {%v}", json_err)
+        if json_err != nil {
+            fmt.eprintfln("ERROR: PROJECT: Failed to deserialise project [%v]", json_err)
             err = .Failed_Deserialisation
             return
         }
 
         atlas_size := i32(project.atlas_size)
 
+        project.file = str.clone(filename)
         project.atlas_image = rl.GenImageColor(atlas_size, atlas_size, rl.BLANK)
         project.working_directory = str.concatenate({fp.dir(filename, context.temp_allocator), fp.SEPARATOR_STRING})
 
         background_image := rl.GenImageChecked(atlas_size, atlas_size, atlas_size / 32, atlas_size / 32, rl.LIGHTGRAY, rl.GRAY)
         defer rl.UnloadImage(background_image)
-
         project.back_texture = rl.LoadTextureFromImage(background_image)
 
         for &texture in project.textures {
@@ -100,7 +128,7 @@ load_project :: proc(filename: string) -> (project: Project, err: Project_Error)
             }
         }
 
-        generate_texture_atlas(&project)
+        generate_project_atlas(&project)
     } else {
         fmt.eprintln("ERROR: PROJECT: Failed to open project")
         err = .Invalid_File
@@ -109,7 +137,7 @@ load_project :: proc(filename: string) -> (project: Project, err: Project_Error)
     return
 }
 
-generate_texture_atlas :: proc(project: ^Project) {
+generate_project_atlas :: proc(project: ^Project) {
     atlas_size := i32(project.atlas_size)
     ctx: stb.Context
     nodes := make([]stb.Node, atlas_size, context.temp_allocator)
@@ -151,6 +179,7 @@ generate_texture_atlas :: proc(project: ^Project) {
 
         texture.bounds.x = f32(rect.x)
         texture.bounds.y = f32(rect.y)
+        texture.packed = true
 
         rl.ImageDraw(&project.atlas_image, texture.image, {0, 0, texture.bounds.width, texture.bounds.height}, texture.bounds, rl.WHITE)
     }

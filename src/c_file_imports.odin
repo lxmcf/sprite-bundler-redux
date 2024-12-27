@@ -21,8 +21,6 @@ file_import_image :: proc(filename: cstring, project: ^Project) -> (ok: bool) {
     new_file := str.concatenate({uuid.to_string(id, context.temp_allocator), ".png"})
     export := str.concatenate({project.working_directory, PROJECT_DIR_TEXTURES, fp.SEPARATOR_STRING, new_file}, context.temp_allocator)
 
-    fmt.println(export)
-
     rl.ExportImage(image, str.clone_to_cstring(export, context.temp_allocator))
 
     texture: Texture = {

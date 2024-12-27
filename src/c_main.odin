@@ -1,5 +1,6 @@
 package main
 
+import "core:os"
 import rl "vendor:raylib"
 
 main :: proc() {
@@ -8,7 +9,7 @@ main :: proc() {
         defer unload_allocator()
     }
 
-    rl.SetWindowState({.WINDOW_HIGHDPI})
+    create_default_file_structure()
 
     rl.SetTraceLogLevel(.DEBUG when ODIN_DEBUG else .FATAL)
     rl.InitWindow(1280, 720, "lxmcf's sprite bundler")
@@ -20,14 +21,14 @@ main :: proc() {
     rl.SetTargetFPS(max_fps <= 0 ? FPS_MINIMUM : max_fps)
 
     project: Project
-    project.working_directory = "test/"
-    project.file = "test.lspp"
-    project.atlas_size = 1024
     defer unload_project(&project)
 
     ctx: Editor_Context
 
     init_editor(&ctx)
+
+    // create_project("nani", 1024)
+    project, _ = load_project("projects/nani/project.lspp")
 
     for !rl.WindowShouldClose() {
         update_editor(&ctx, &project)
@@ -57,10 +58,16 @@ main :: proc() {
         draw_editor(ctx, project)
         rl.EndMode2D()
 
-        draw_editor_ui(ctx)
+        draw_editor_ui(ctx, project)
 
         when ODIN_DEBUG {
             draw_fps()
         }
+    }
+}
+
+create_default_file_structure :: proc() {
+    if !os.is_dir(PROJECT_DIRECTORY) {
+        os.make_directory(PROJECT_DIRECTORY)
     }
 }

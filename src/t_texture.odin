@@ -12,11 +12,13 @@ Texture :: struct {
     name:       string,
     file:       string,
     type:       Texture_Type,
-    image:      rl.Image `json:"-"`,
     bounds:     Rectangle,
-    packed:     bool,
     sprites:    [dynamic]Sprite `json:"sprites,omitempty"`,
     animations: [dynamic]Animation `json:"animations,omitempty"`,
+
+    // INTERNAL
+    image:      rl.Image `json:"-"`,
+    packed:     bool `json:"-"`,
 }
 
 unload_texture :: proc(texture: ^Texture) {

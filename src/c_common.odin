@@ -13,8 +13,14 @@ FOURCC_TILESET :: "TILE"
 
 PROJECT_DIR_TEXTURES :: "textures"
 PROJECT_DIR_FONTS :: "fonts"
+PROJECT_DIR_EXPORTS :: "exports"
+PROJECT_DIRECTORY :: "projects"
+PROJECT_VERSION :: 100
 
-CONFIG_FILENAME :: "lspp.conf"
+CONFIG_FILENAME :: "project.conf"
+PROJECT_FILENAME :: "project.lspp"
+
+EDITOR_TOOLBAR_HEIGHT :: 32
 
 Vector2 :: [2]f32
 Vector2i :: [2]int
