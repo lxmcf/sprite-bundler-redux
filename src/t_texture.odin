@@ -9,8 +9,7 @@ Texture_Type :: enum u8 {
 }
 
 Texture :: struct {
-    name:       string,
-    file:       string,
+    id:         string,
     type:       Texture_Type,
     bounds:     Rectangle,
     sprites:    [dynamic]Sprite `json:"sprites,omitempty"`,
@@ -22,10 +21,13 @@ Texture :: struct {
 }
 
 unload_texture :: proc(texture: ^Texture) {
-    delete(texture.name)
-    delete(texture.file)
+    delete(texture.id)
 
     rl.UnloadImage(texture.image)
+
+    for &sprite in texture.sprites {
+        delete(sprite.name)
+    }
 
     delete(texture.sprites)
     delete(texture.animations)

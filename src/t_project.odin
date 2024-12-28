@@ -80,10 +80,9 @@ save_project :: proc(project: Project) -> (err: Project_Error) {
     }
 
     options: json.Marshal_Options = {
-        use_enum_names = true,
-        use_spaces     = true,
-        pretty         = true,
-        spaces         = 4,
+        use_spaces = true,
+        pretty     = true,
+        spaces     = 4,
     }
 
     if project_data, error := json.marshal(project, options, context.temp_allocator); error == nil {
@@ -117,7 +116,7 @@ load_project :: proc(filename: string) -> (project: Project, err: Project_Error)
         project.back_texture = rl.LoadTextureFromImage(background_image)
 
         for &texture in project.textures {
-            sprite_file := str.concatenate({project.working_directory, PROJECT_DIR_TEXTURES, fp.SEPARATOR_STRING, texture.file}, context.temp_allocator)
+            sprite_file := str.concatenate({project.working_directory, PROJECT_DIR_TEXTURES, fp.SEPARATOR_STRING, texture.id, ".png"}, context.temp_allocator)
 
             if os.is_file(sprite_file) {
                 texture.image = rl.LoadImage(str.clone_to_cstring(sprite_file, context.temp_allocator))

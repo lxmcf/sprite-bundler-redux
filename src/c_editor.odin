@@ -132,11 +132,22 @@ handle_file_drop :: proc(ctx: Editor_Context, project: ^Project) {
             fmt.println("Got a project file")
 
         case ".ttf", ".otf":
-            fmt.println("Got a font")
+            ok := file_import_font(path, project)
+
+            if ok {
+                should_regenerate_atlas = true
+            } else {
+                fmt.eprintfln("ERROR: FILE: Failed to load font [%s]!", path)
+            }
 
         case ".png", ".bmp", ".tga", ".jpg", ".gif", ".qoi", ".psd", ".dds", ".hdr", ".ktx", ".astc", ".pkm", ".pvr":
-            file_import_image(path, project)
-            should_regenerate_atlas = true
+            ok := file_import_image(path, project)
+
+            if ok {
+                should_regenerate_atlas = true
+            } else {
+                fmt.eprintfln("ERROR: FILE: Failed to load image [%s]!", path)
+            }
         }
     }
 
