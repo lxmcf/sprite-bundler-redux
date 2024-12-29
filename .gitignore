@@ -11,3 +11,4 @@ test/
 *.lspp
 *.exe
 *.obj
+*.conf

@@ -12,6 +12,7 @@ Texture :: struct {
     id:         string,
     type:       Texture_Type,
     bounds:     Rectangle,
+    fonts:      [dynamic]Font `json:"fonts,omitempty"`,
     sprites:    [dynamic]Sprite `json:"sprites,omitempty"`,
     animations: [dynamic]Animation `json:"animations,omitempty"`,
 
@@ -28,7 +29,12 @@ unload_texture :: proc(texture: ^Texture) {
     for &sprite in texture.sprites {
         delete(sprite.name)
     }
-
     delete(texture.sprites)
+
+    for &font in texture.fonts {
+        unload_font(&font)
+    }
+    delete(texture.fonts)
+
     delete(texture.animations)
 }

@@ -34,9 +34,9 @@ init_editor :: proc(ctx: ^Editor_Context) {
     ctx.selected_texture = -1
 }
 
-update_editor :: proc(ctx: ^Editor_Context, project: ^Project) {
+update_editor :: proc(ctx: ^Editor_Context, config: ^Config, project: ^Project) {
     handle_camera(ctx)
-    handle_file_drop(ctx^, project)
+    handle_file_drop(ctx^, config^, project)
 
     mouse := rl.GetMousePosition()
     mouse_world := rl.GetScreenToWorld2D(mouse, ctx.camera)
@@ -91,7 +91,7 @@ draw_editor :: proc(ctx: Editor_Context, project: Project) {
     }
 }
 
-draw_editor_ui :: proc(ctx: Editor_Context, project: Project) {
+draw_editor_ui :: proc(ctx: Editor_Context, config: Config, project: ^Project) {
     if ctx.selected_texture > -1 {
         bounds := project.textures[ctx.selected_texture].bounds
 
@@ -105,14 +105,14 @@ draw_editor_ui :: proc(ctx: Editor_Context, project: Project) {
 
     #partial switch ctx.editor_mode {
     case .None:
-        draw_editor_toolbar()
+        draw_editor_toolbar(config, project)
 
     case .Edit_Texture:
-        draw_texture_toolbar()
+        draw_texture_toolbar(config, project)
     }
 }
 
-handle_file_drop :: proc(ctx: Editor_Context, project: ^Project) {
+handle_file_drop :: proc(ctx: Editor_Context, config: Config, project: ^Project) {
     if !rl.IsFileDropped() {
         return
     }
@@ -132,7 +132,7 @@ handle_file_drop :: proc(ctx: Editor_Context, project: ^Project) {
             fmt.println("Got a project file")
 
         case ".ttf", ".otf":
-            ok := file_import_font(path, project)
+            ok := file_import_font(path, config, project)
 
             if ok {
                 should_regenerate_atlas = true
@@ -141,7 +141,7 @@ handle_file_drop :: proc(ctx: Editor_Context, project: ^Project) {
             }
 
         case ".png", ".bmp", ".tga", ".jpg", ".gif", ".qoi", ".psd", ".dds", ".hdr", ".ktx", ".astc", ".pkm", ".pvr":
-            ok := file_import_image(path, project)
+            ok := file_import_image(path, config, project)
 
             if ok {
                 should_regenerate_atlas = true

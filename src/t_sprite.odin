@@ -5,3 +5,7 @@ Sprite :: struct {
     origin: Vector2,
     bounds: Rectangle,
 }
+
+unload_sprite :: proc(sprite: ^Sprite) {
+    delete(sprite.name)
+}

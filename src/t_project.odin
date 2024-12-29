@@ -41,12 +41,10 @@ create_project :: proc(name: string, atlas_size: int) {
     project.file = str.concatenate({project.working_directory, PROJECT_FILENAME})
 
     texture_directory := str.concatenate({project.working_directory, PROJECT_DIR_TEXTURES}, context.temp_allocator)
-    font_directory := str.concatenate({project.working_directory, PROJECT_DIR_FONTS}, context.temp_allocator)
     export_directory := str.concatenate({project.working_directory, PROJECT_DIR_EXPORTS}, context.temp_allocator)
 
     os.make_directory(project.working_directory)
     os.make_directory(texture_directory)
-    os.make_directory(font_directory)
     os.make_directory(export_directory)
 
     save_project(project)
@@ -128,6 +126,8 @@ load_project :: proc(filename: string) -> (project: Project, err: Project_Error)
         }
 
         generate_project_atlas(&project)
+
+        rl.SetWindowTitle(str.clone_to_cstring(project.name, context.temp_allocator))
     } else {
         fmt.eprintln("ERROR: PROJECT: Failed to open project")
         err = .Invalid_File

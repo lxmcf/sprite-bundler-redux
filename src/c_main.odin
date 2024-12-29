@@ -24,14 +24,19 @@ main :: proc() {
     defer unload_project(&project)
 
     ctx: Editor_Context
+    config: Config = load_config(CONFIG_FILENAME)
+    defer save_config(config, CONFIG_FILENAME)
 
     init_editor(&ctx)
 
-    // create_project("nani", 1024)
+    if !project_exists("nani") {
+        create_project("nani", 1024)
+    }
+
     project, _ = load_project("projects/nani/project.lspp")
 
     for !rl.WindowShouldClose() {
-        update_editor(&ctx, &project)
+        update_editor(&ctx, &config, &project)
 
         when ODIN_DEBUG {
             if rl.IsKeyDown(.LEFT_CONTROL) {
@@ -58,7 +63,7 @@ main :: proc() {
         draw_editor(ctx, project)
         rl.EndMode2D()
 
-        draw_editor_ui(ctx, project)
+        draw_editor_ui(ctx, config, &project)
 
         when ODIN_DEBUG {
             draw_fps()
