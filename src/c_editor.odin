@@ -7,13 +7,17 @@ import rl "vendor:raylib"
 
 Editor_Context :: struct {
     // CORE
-    camera:           rl.Camera2D,
-    target_zoom:      f32,
-    editor_mode:      Editor_Mode,
-    import_mode:      Import_Mode,
+    camera:              rl.Camera2D,
+    target_zoom:         f32,
+    editor_mode:         Editor_Mode,
+    import_mode:         Import_Mode,
 
     // SELECTED
-    selected_texture: int,
+    selected_texture:    int,
+
+    // BUFFERS
+    asset_name_buffer:   [256]byte,
+    asset_import_buffer: [256]byte,
 }
 
 Editor_Mode :: enum u8 {

@@ -12,7 +12,8 @@ FOURCC_ANIMATION :: "ANIM"
 FOURCC_TILESET :: "TILE"
 
 FONT_CHARACTERS :: "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"
-FONT_CHARACTERS_MINIMAL :: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890?!&.,_:[]-+"
+FONT_CHARACTERS_BASIC :: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890?!\"#$%&'|()[]{}*+,-./"
+FONT_CHARACTERS_MINIMAL :: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890?!."
 
 PROJECT_DIR_TEXTURES :: "textures"
 PROJECT_DIR_EXPORTS :: "exports"
@@ -31,7 +32,7 @@ Vector2i :: [2]int
 Rectangle :: rl.Rectangle
 
 // NOTE: Cannot serialise rl.GlyphInfo
-GlyphInfo :: struct {
+Glyph_Info :: struct {
     value:    i32, // NOTE: Cannot unmarshal a rune?
     offset_x: i32,
     offset_y: i32,

@@ -12,8 +12,8 @@ Font :: struct {
     name:       string,
     size:       i32,
     padding:    i32,
-    rectangles: [dynamic]Rectangle,
-    glyphs:     [dynamic]GlyphInfo,
+    rectangles: []Rectangle,
+    glyphs:     []Glyph_Info,
 }
 
 unload_font :: proc(font: ^Font) {
@@ -45,8 +45,8 @@ generate_font :: proc(filename: cstring, font: rl.Font, config: Config, project:
         padding = font.glyphPadding,
     }
 
-    font_data.rectangles = make([dynamic]Rectangle, font.glyphCount)
-    font_data.glyphs = make([dynamic]GlyphInfo, font.glyphCount)
+    font_data.rectangles = make([]Rectangle, font.glyphCount)
+    font_data.glyphs = make([]Glyph_Info, font.glyphCount)
 
     for i in 0 ..< font.glyphCount {
         font_data.rectangles[i] = font.recs[i]

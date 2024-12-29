@@ -54,7 +54,7 @@ file_import_image :: proc(filename: cstring, config: Config, project: ^Project) 
 }
 
 file_import_font :: proc(filename: cstring, config: Config, project: ^Project) -> (ok: bool) {
-    character_runes := utf8.string_to_runes(FONT_CHARACTERS, context.temp_allocator)
+    character_runes := utf8.string_to_runes(FONT_CHARACTERS_MINIMAL, context.temp_allocator)
 
     font := rl.LoadFontEx(filename, 32, raw_data(character_runes), i32(len(character_runes)))
     defer rl.UnloadFont(font)
