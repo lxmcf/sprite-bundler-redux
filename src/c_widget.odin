@@ -17,8 +17,14 @@ draw_editor_toolbar :: proc(config: Config, project: ^Project) {
         generate_project_atlas(project)
     }
 
+    rl.GuiSetTooltip("Generate primitive sprite")
+    if rl.GuiButton({88, 4, 24, 24}, "#100#") {
+        generate_primitive_sprites(project)
+        generate_project_atlas(project)
+    }
+
     rl.GuiSetTooltip("Resize Atlas")
-    rl.GuiButton({88, 4, 24, 24}, "#69#")
+    rl.GuiButton({116, 4, 24, 24}, "#69#")
 
     rl.GuiDisableTooltip()
 }
@@ -34,6 +40,11 @@ draw_texture_toolbar :: proc(config: Config, project: ^Project) {
 
     rl.GuiSetTooltip("Create Animation")
     rl.GuiButton({60, 4, 24, 24}, "#150#")
+
+    rl.GuiSetTooltip("Delete Texture")
+    if rl.GuiButton({88, 4, 24, 24}, "#9#") {
+
+    }
 
     rl.GuiDisableTooltip()
 }

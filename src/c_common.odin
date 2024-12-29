@@ -12,6 +12,7 @@ FOURCC_ANIMATION :: "ANIM"
 FOURCC_TILESET :: "TILE"
 
 FONT_CHARACTERS :: "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"
+FONT_CHARACTERS_MINIMAL :: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890?!&.,_:[]-+"
 
 PROJECT_DIR_TEXTURES :: "textures"
 PROJECT_DIR_EXPORTS :: "exports"

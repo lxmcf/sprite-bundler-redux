@@ -69,3 +69,30 @@ file_import_font :: proc(filename: cstring, config: Config, project: ^Project) -
 
     return
 }
+
+generate_primitive_sprites :: proc(project: ^Project) {
+    context.random_generator = crypto.random_generator()
+    image := rl.GenImageColor(16, 16, rl.WHITE) // NOTE: Using 16px simply for legibility on atlas
+
+    id := str.concatenate({uuid.to_string(uuid.generate_v7(), context.temp_allocator)})
+    export := str.concatenate({project.working_directory, PROJECT_DIR_TEXTURES, fp.SEPARATOR_STRING, id, ".png"}, context.temp_allocator)
+
+    rl.ExportImage(image, str.clone_to_cstring(export, context.temp_allocator))
+
+    texture: Texture = {
+        id     = id,
+        type   = .Texture,
+        image  = image,
+        bounds = {0, 0, f32(image.width), f32(image.height)},
+    }
+
+    sprite_pixel: Sprite = {
+        name   = str.clone("primitive_pixel"),
+        bounds = {0, 0, 1, 1},
+    }
+
+    append(&texture.sprites, sprite_pixel)
+    append(&project.textures, texture)
+
+    save_project(project^)
+}
