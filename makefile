@@ -15,24 +15,21 @@ endif
 
 ifeq ($(OS), Windows_NT)
 	EXE_EXT = .exe
-	C_FLAGS += -subsystem:windows -resource:win.rc
+	C_FLAGS += -subsystem:windows -resource:data/win.rc
 endif
 
 .PHONY: build run clean
 
 build:
-	$(ODINC) build src/ -out:$(EXE)$(EXE_EXT) $(C_FLAGS) -o:$(OPT)
+	mkdir -p .build
+	$(ODINC) build src/ -out:.build/$(EXE)$(EXE_EXT) $(C_FLAGS) -o:$(OPT)
 
 run: build
-	./$(EXE)$(EXE_EXT)
+	.build/$(EXE)$(EXE_EXT)
 
 clean:
 ifeq ($(OS), Windows_NT)
-	rmdir /s projects
-
-	del $(EXE)$(EXE_EXT) *.dat
+	rmdir /s projects .build
 else
-	rm -rf projects
-
-	rm -f ./$(EXE)$(EXE_EXT) *.dat
+	rm -rf projects .build
 endif

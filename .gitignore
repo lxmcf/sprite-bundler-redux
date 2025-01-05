@@ -4,7 +4,9 @@ a.out
 lspb
 example
 
+.build/
 projects/
+
 # Used for mini testing, not tests
 test/
 
@@ -12,3 +14,4 @@ test/
 *.exe
 *.obj
 *.conf
+*.res
