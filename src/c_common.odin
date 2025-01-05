@@ -5,8 +5,9 @@ import rl "vendor:raylib"
 FPS_MINIMUM :: 60
 
 FOURCC_HEADER :: "LSPX"
+FOURCC_EOF :: "BEOF"
 FOURCC_SPRITE :: "SPRT"
-FOURCC_ATLAS :: "ATLS"
+FOURCC_ATLAS :: "ATLS" // Might re-add multiple atlas or allow atlas 'swapping'
 FOURCC_FONT :: "FONT"
 FOURCC_ANIMATION :: "ANIM"
 FOURCC_TILESET :: "TILE"
@@ -20,8 +21,11 @@ PROJECT_DIR_EXPORTS :: "exports"
 PROJECT_DIRECTORY :: "projects"
 PROJECT_VERSION :: 100
 
-CONFIG_FILENAME :: "lspp.conf"
+CONFIG_FILENAME :: "lspb.conf"
 PROJECT_FILENAME :: "project.lspp"
+BUNDLE_FILENAME :: "bundle.lspx"
+
+BUNDLE_BYTE_ALIGNMENT :: 4
 
 EDITOR_TOOLBAR_HEIGHT :: 32
 

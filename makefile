@@ -1,5 +1,5 @@
-EXE := lspp
-CC := odin
+EXE := lspb
+ODINC := odin
 BUILD ?= DEBUG
 
 C_FLAGS := -vet -min-link-libs -strict-style -disallow-do
@@ -15,16 +15,16 @@ endif
 
 ifeq ($(OS), Windows_NT)
 	EXE_EXT = .exe
-	C_FLAGS += -subsystem:windows
+	C_FLAGS += -subsystem:windows -resource:win.rc
 endif
 
 .PHONY: build run clean
 
 build:
-	$(CC) build src/ -out:$(EXE)$(EXE_EXT) $(C_FLAGS) -o:$(OPT)
+	$(ODINC) build src/ -out:$(EXE)$(EXE_EXT) $(C_FLAGS) -o:$(OPT)
 
 run: build
-	./$(EXE)
+	./$(EXE)$(EXE_EXT)
 
 clean:
 ifeq ($(OS), Windows_NT)

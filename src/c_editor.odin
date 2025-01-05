@@ -55,6 +55,12 @@ update_editor :: proc(ctx: ^Editor_Context, config: ^Config, project: ^Project) 
         save_project(project^)
     }
 
+    if rl.IsKeyDown(.LEFT_CONTROL) && rl.IsKeyReleased(.E) {
+        if export_bundle(project^, config^) == .None {
+            fmt.println("SUCCESS: BUNDLE: Bundle successfully exported")
+        }
+    }
+
     for texture, index in project.textures {
         if !texture.packed {
             continue

@@ -10,10 +10,10 @@ Config :: struct {
     auto_generate_sprite:            bool, // Generate a sprite in texture import
     font_generate_character_sprites: bool, // Generate a sprite for each character (Not recommended)
     font_generate_sprite:            bool, // Generates a sprite for the font texture
-    export_atlas_as_png:             bool,
+    export_atlas_as_png:             bool, // Export atlas as a PNG
     export_c_header:                 bool, // Export a C header with predefined enums for sprite ID's (only useful for supplied loader)
-    export_raw_c:                    bool, // Export sprite and font info to raw C file
-    export_raw_odin:                 bool, // Export sprite and font info to raw C file
+    export_raw_c:                    bool, // Export sprite and font info to raw C file (Will export atlas PNG)
+    export_raw_odin:                 bool, // Export sprite and font info to raw Odin file (Will export atlas PNG)
 }
 
 load_default_config :: proc() -> Config {
