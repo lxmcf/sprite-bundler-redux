@@ -18,6 +18,9 @@ Editor_Context :: struct {
     // BUFFERS
     asset_name_buffer:   [256]byte,
     asset_import_buffer: [256]byte,
+
+    // TEST
+    test_font:           rl.Font,
 }
 
 Editor_Mode :: enum u8 {
@@ -53,6 +56,31 @@ update_editor :: proc(ctx: ^Editor_Context, config: ^Config, project: ^Project) 
 
     if rl.IsKeyDown(.LEFT_CONTROL) && rl.IsKeyReleased(.S) {
         save_project(project^)
+    }
+
+    if rl.IsKeyDown(.LEFT_CONTROL) && rl.IsKeyReleased(.D) {
+        font := project.fonts[0]
+
+        ctx.test_font.baseSize = font.size
+        ctx.test_font.glyphCount = i32(len(font.glyphs))
+        ctx.test_font.texture = project.atlas_texture
+
+        recs := make([]Rectangle, len(font.glyphs))
+        glyphs := make([]rl.GlyphInfo, len(font.glyphs))
+
+        for i in 0 ..< len(font.glyphs) {
+            texture := project.textures[project.texture_lookup[font.glyphs[i].texture]]
+
+            recs[i] = texture.bounds
+            glyphs[i].value = rune(font.glyphs[i].value)
+            glyphs[i].offsetX = font.glyphs[i].offset_x
+            glyphs[i].offsetY = font.glyphs[i].offset_y
+            glyphs[i].advanceX = font.glyphs[i].advance_x
+        }
+
+        ctx.test_font.glyphs = raw_data(glyphs)
+        ctx.test_font.recs = raw_data(recs)
+
     }
 
     if rl.IsKeyDown(.LEFT_CONTROL) && rl.IsKeyReleased(.E) {
@@ -119,6 +147,10 @@ draw_editor_ui :: proc(ctx: Editor_Context, config: Config, project: ^Project) {
 
     case .Edit_Texture:
         draw_texture_toolbar(config, project)
+    }
+
+    if rl.IsFontValid(ctx.test_font) {
+        rl.DrawTextEx(ctx.test_font, "HELLO WORLD!", {128, 128}, 64, 1, rl.RED)
     }
 }
 

@@ -14,6 +14,7 @@ Project :: struct {
     version:           int,
     atlas_size:        int,
     textures:          [dynamic]Texture,
+    fonts:             [dynamic]Font,
 
     // Internal
     file:              string `json:"-"`,
@@ -21,6 +22,7 @@ Project :: struct {
     atlas_texture:     rl.Texture `json:"-"`,
     back_texture:      rl.Texture `json:"-"`,
     working_directory: string `json:"-"`,
+    texture_lookup:    map[string]int `json:"-"`,
 }
 
 Project_Error :: enum u8 {
@@ -63,7 +65,13 @@ unload_project :: proc(project: ^Project) {
         unload_texture(&texture)
     }
 
+    for &font in project.fonts {
+        unload_font(&font)
+    }
+
     delete(project.textures)
+    delete(project.fonts)
+    delete(project.texture_lookup)
 }
 
 project_exists :: proc(name: string) -> bool {
@@ -109,11 +117,17 @@ load_project :: proc(filename: string) -> (project: Project, err: Project_Error)
         project.atlas_image = rl.GenImageColor(atlas_size, atlas_size, rl.BLANK)
         project.working_directory = str.concatenate({fp.dir(filename, context.temp_allocator), fp.SEPARATOR_STRING})
 
+        texture_directory := str.concatenate({project.working_directory, PROJECT_DIR_TEXTURES}, context.temp_allocator)
+        export_directory := str.concatenate({project.working_directory, PROJECT_DIR_EXPORTS}, context.temp_allocator)
+
+        os.make_directory(texture_directory)
+        os.make_directory(export_directory)
+
         background_image := rl.GenImageChecked(atlas_size, atlas_size, atlas_size / 32, atlas_size / 32, rl.LIGHTGRAY, rl.GRAY)
         defer rl.UnloadImage(background_image)
         project.back_texture = rl.LoadTextureFromImage(background_image)
 
-        for &texture in project.textures {
+        for &texture, index in project.textures {
             sprite_file := str.concatenate({project.working_directory, PROJECT_DIR_TEXTURES, fp.SEPARATOR_STRING, texture.id, ".png"}, context.temp_allocator)
 
             if os.is_file(sprite_file) {
@@ -123,6 +137,8 @@ load_project :: proc(filename: string) -> (project: Project, err: Project_Error)
 
                 texture.image = rl.GenImageChecked(i32(texture.bounds.width), i32(texture.bounds.height), i32(texture.bounds.width) / 32, i32(texture.bounds.height) / 32, rl.MAGENTA, rl.BLACK)
             }
+
+            project.texture_lookup[texture.id] = index
         }
 
         generate_project_atlas(&project)

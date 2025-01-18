@@ -18,7 +18,7 @@
 ---
 
 > [!NOTE]
-> LSPP is in early development and a lot of UI and code is very 'first pass' and `may` get a further pass to clean everything up.
+> LSPB is in early development and a lot of UI and code is very 'first pass' and `may` get a further pass to clean everything up.
 
 Sprite Bundler Redux is a ground up rewrite of my old [Sprite Bundler](https://github.com/lxmcf/sprite-bundler) now rewritten in [Odin](https://odin-lang.org/) instead of C!
 
@@ -88,7 +88,7 @@ You can find some basic loaders in the [loaders](/loaders) directory, alternativ
 
 #### Q) What does each executable do?
 - lspi - Lxmcf Sprite Packer Inspector - A CLI tool to insect bundles and extract data
-- lspp - Lxmcf Sprite Packer Program - The main application
+- lspb - Lxmcf Sprite Packer Program - The main application
 
 #### Q) Why is the bundle file size larger than the raw images?
 I did use compression on the texture atlas data ([PNG Data](http://www.libpng.org/pub/png/)) however this was removed due to instability hence a large file size, however the bundle will also store some arbitrary [FourCC style](https://en.wikipedia.org/wiki/FourCC) codes to easily identify where an atlas or sprite are in the exported bundle. Data to identify the position of the sprite in the atlas, it's origin point and animation frames are also stored, you can view the [bundle structure](/docs/bundle.md) for more info.

@@ -2,17 +2,12 @@ package main
 
 import "core:crypto"
 import "core:encoding/uuid"
-import "core:fmt"
 import fp "core:path/filepath"
 import str "core:strings"
-import "core:unicode/utf8"
 
 import rl "vendor:raylib"
 
-_ :: fmt
-
 file_import_image :: proc(filename: cstring, config: Config, project: ^Project) -> (ok: bool) {
-    context.random_generator = crypto.random_generator()
     image := rl.LoadImage(filename)
 
     if !rl.IsImageValid(image) {
@@ -47,6 +42,7 @@ file_import_image :: proc(filename: cstring, config: Config, project: ^Project) 
 
     append(&texture.sprites, sprite)
     append(&project.textures, texture)
+    project.texture_lookup[id] = len(project.textures) - 1
 
     ok = true
 
@@ -54,45 +50,15 @@ file_import_image :: proc(filename: cstring, config: Config, project: ^Project) 
 }
 
 file_import_font :: proc(filename: cstring, config: Config, project: ^Project) -> (ok: bool) {
-    character_runes := utf8.string_to_runes(FONT_CHARACTERS_MINIMAL, context.temp_allocator)
-
-    font := rl.LoadFontEx(filename, 32, raw_data(character_runes), i32(len(character_runes)))
-    defer rl.UnloadFont(font)
+    context.random_generator = crypto.random_generator()
+    font := rl.LoadFont(filename)
 
     if !rl.IsFontValid(font) {
+        rl.UnloadFont(font)
         return
     }
 
-    generate_font(filename, font, config, project)
-
-    ok = true
+    ok = generate_font(filename, font, config, project)
 
     return
-}
-
-generate_primitive_sprites :: proc(project: ^Project) {
-    context.random_generator = crypto.random_generator()
-    image := rl.GenImageColor(16, 16, rl.WHITE) // NOTE: Using 16px simply for legibility on atlas
-
-    id := str.concatenate({uuid.to_string(uuid.generate_v7(), context.temp_allocator)})
-    export := str.concatenate({project.working_directory, PROJECT_DIR_TEXTURES, fp.SEPARATOR_STRING, id, ".png"}, context.temp_allocator)
-
-    rl.ExportImage(image, str.clone_to_cstring(export, context.temp_allocator))
-
-    texture: Texture = {
-        id     = id,
-        type   = .Texture,
-        image  = image,
-        bounds = {0, 0, f32(image.width), f32(image.height)},
-    }
-
-    sprite_pixel: Sprite = {
-        name   = str.clone("primitive_pixel"),
-        bounds = {0, 0, 1, 1},
-    }
-
-    append(&texture.sprites, sprite_pixel)
-    append(&project.textures, texture)
-
-    save_project(project^)
 }

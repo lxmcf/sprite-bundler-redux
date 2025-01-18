@@ -64,7 +64,7 @@ export_bundle :: proc(project: Project, config: Config) -> Bundle_Error {
     // ATLAS DATA -> Layout
     // [4 BYTES] FourCC
     // [4 BYTES] Data size
-    // [^ BYTES]
+    // [^ BYTES] Data (PNG format)
     os.write_string(handle, FOURCC_ATLAS[:4])
     os.write_ptr(handle, &raw_data_size, size_of(i32))
     os.write_ptr(handle, raw_data, int(raw_data_size))
@@ -72,52 +72,6 @@ export_bundle :: proc(project: Project, config: Config) -> Bundle_Error {
 
     for texture in project.textures {
         texture_position: Vector2 = {texture.bounds.x, texture.bounds.y}
-
-        for font in texture.fonts {
-            // [4 BYTES] FourCC
-            os.write_string(handle, FOURCC_FONT[:4])
-
-            name_length := i32(len(font.name))
-            rect_count := i32(len(font.rectangles))
-            glyph_count := i32(len(font.glyphs))
-
-            // FONT INFO -> Layout
-            // [4 BYTES] Name length
-            // [^ BYTES] Name
-            // [4 BYTES] Rectangle count
-            // [4 BYTES] Glyph count
-            os.write_ptr(handle, &name_length, size_of(i32))
-            os.write_string(handle, font.name)
-            os.write_ptr(handle, &rect_count, size_of(i32))
-            os.write_ptr(handle, &glyph_count, size_of(i32))
-            pad_file(handle, BUNDLE_BYTE_ALIGNMENT)
-
-            for &rectangle in font.rectangles {
-                // RECTANGLE DATA -> Layout
-                // [4 BYTES] X
-                // [4 BYTES] Y
-                // [4 BYTES] Width
-                // [4 BYTES] Height
-                os.write_ptr(handle, &rectangle.x, size_of(f32))
-                os.write_ptr(handle, &rectangle.y, size_of(f32))
-                os.write_ptr(handle, &rectangle.width, size_of(f32))
-                os.write_ptr(handle, &rectangle.height, size_of(f32))
-                pad_file(handle, BUNDLE_BYTE_ALIGNMENT)
-            }
-
-            for &glyph in font.glyphs {
-                // GLYPH DATA -> Layout
-                // [4 BYTES] Value
-                // [4 BYTES] X offset
-                // [4 BYTES] Y offset
-                // [4 BYTES] Advancement
-                os.write_ptr(handle, &glyph.value, size_of(f32))
-                os.write_ptr(handle, &glyph.offset_x, size_of(f32))
-                os.write_ptr(handle, &glyph.offset_y, size_of(f32))
-                os.write_ptr(handle, &glyph.advance, size_of(f32))
-                pad_file(handle, BUNDLE_BYTE_ALIGNMENT)
-            }
-        }
 
         for sprite in texture.sprites {
             // [4 BYTES] FourCC
@@ -191,6 +145,52 @@ export_bundle :: proc(project: Project, config: Config) -> Bundle_Error {
                 os.write_ptr(handle, &new_frame.width, size_of(f32))
                 os.write_ptr(handle, &new_frame.height, size_of(f32))
             }
+        }
+    }
+
+    for font in project.fonts {
+        // [4 BYTES] FourCC
+        os.write_string(handle, FOURCC_FONT[:4])
+
+        name_length := i32(len(font.name))
+        glyph_count := i32(len(font.glyphs))
+        font_size := font.size
+
+        // FONT INFO -> Layout
+        // [4 BYTES] Name length
+        // [^ BYTES] Name
+        // [4 BYTES] Glyph count
+        // [4 BYTES] Font size
+        os.write_ptr(handle, &name_length, size_of(i32))
+        os.write_string(handle, font.name)
+        os.write_ptr(handle, &glyph_count, size_of(i32))
+        os.write_ptr(handle, &font_size, size_of(i32))
+        pad_file(handle, BUNDLE_BYTE_ALIGNMENT)
+
+        // TODO: Work out something more clean... This is terrible
+        for glyph in font.glyphs {
+            texture := project.textures[project.texture_lookup[glyph.texture]]
+            glyph := glyph // Clone
+
+            // GLYPH INFO
+            // [4 BYTES] Value
+            // [4 BYTES] Offset X
+            // [4 BYTES] Offset Y
+            // [4 BYTES] Advance X
+            os.write_ptr(handle, &glyph.value, size_of(i32))
+            os.write_ptr(handle, &glyph.offset_x, size_of(i32))
+            os.write_ptr(handle, &glyph.offset_y, size_of(i32))
+            os.write_ptr(handle, &glyph.advance_x, size_of(i32))
+
+            // GLYPH BOUNDS
+            // [4 BYTES] X
+            // [4 BYTES] Y
+            // [4 BYTES] Width
+            // [4 BYTES] Height
+            os.write_ptr(handle, &texture.bounds.x, size_of(f32))
+            os.write_ptr(handle, &texture.bounds.y, size_of(f32))
+            os.write_ptr(handle, &texture.bounds.width, size_of(f32))
+            os.write_ptr(handle, &texture.bounds.height, size_of(f32))
         }
     }
 

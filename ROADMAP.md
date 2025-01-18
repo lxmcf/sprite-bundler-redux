@@ -7,7 +7,7 @@
 * [ ] Tilemaps
 * [ ] Versioning system
 * [ ] Stable file compression
-* [ ] Seperate sprite bounds from sprite textures
+* [X] Seperate sprite bounds from sprite textures
 * [ ] New loaders
     * [ ] SDL
     * [ ] Generic
@@ -15,6 +15,6 @@
     * [X] 9 slice
     * [ ] Tile drawing
 * [ ] Bundle inspector
-* [ ] Generic primitive sprite
+* [X] Generic primitive sprite
 * [ ] Edit config in editor
 * [ ] Save config and projects into home folder (AppData, .config, etc)
