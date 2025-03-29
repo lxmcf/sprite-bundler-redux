@@ -1,13 +1,17 @@
 out.txt
 
 a.out
-lspp
+lspb
 example
 
+.build/
 projects/
+
 # Used for mini testing, not tests
 test/
 
 *.lspp
 *.exe
 *.obj
+*.conf
+*.res

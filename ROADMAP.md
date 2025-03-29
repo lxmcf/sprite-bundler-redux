@@ -2,12 +2,12 @@
 
 ### Version 1.0:
 * [X] Cleaner UI (Drop microui and make a simple gui library)
-* [ ] Code cleanup
+* [X] Code cleanup
 * [ ] Animations
 * [ ] Tilemaps
 * [ ] Versioning system
 * [ ] Stable file compression
-* [ ] Seperate sprite bounds from sprite textures
+* [X] Seperate sprite bounds from sprite textures
 * [ ] New loaders
     * [ ] SDL
     * [ ] Generic
@@ -15,8 +15,6 @@
     * [X] 9 slice
     * [ ] Tile drawing
 * [ ] Bundle inspector
-* [ ] Sprite splitting (Split 1 sprite into multiple)
-* [ ] Generic primitive sprite
-* [ ] Edit project config in editor
+* [X] Generic primitive sprite
+* [ ] Edit config in editor
 * [ ] Save config and projects into home folder (AppData, .config, etc)
-* [ ] Move to a canvas system rather than seperate atlas pages

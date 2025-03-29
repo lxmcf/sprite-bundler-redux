@@ -18,13 +18,13 @@
 ---
 
 > [!NOTE]
-> LSPP is in early development and a lot of UI and code is very 'first pass' and `may` get a further pass to clean everything up
+> LSPB is in early development and a lot of UI and code is very 'first pass' and `may` get a further pass to clean everything up.
 
 Sprite Bundler Redux is a ground up rewrite of my old [Sprite Bundler](https://github.com/lxmcf/sprite-bundler) now rewritten in [Odin](https://odin-lang.org/) instead of C!
 
-The original ballooned from a simple project that would easily fit into a single C file to a more complex project driven tool that became unmanagable (Plus I broke it while refactoring), this version maintains the same and even massively expands on the originals functionality.
+The original sprite bundler ballooned from a simple project that would easily fit into a single C file to a more complex project driven tool that became unmanagable (Plus I broke it while refactoring), this version maintains the same; and even massively expands on the originals functionality.
 
-Sprite Bundler Redux can be used to combine several individual textures (Only PNG currently) into 1 or even multiple texture atlas' with source coordinates, origin points and even simple animation frames embeded into a single file to avoid texture swapping with API's for multiple frameworks and even languages. This tool may be more advanced than its original however it is still intended for small games/game james.
+Sprite Bundler Redux can be used to combine several individual textures into a single texture atlas with source coordinates, origin points and even simple animation frames embeded into a single file to avoid texture swapping with API's for multiple frameworks and even languages. This tool may be more advanced than its original however it is still intended for small games/game james.
 
 ### Compiling
 
@@ -66,12 +66,6 @@ odin build src/ -out:application.exe -collection:bundler=src -vet -min-link-libs
 - Add files to currently open atlas
     - Drop desired files over window, sprites will be sorted and packed automatically
 
-- Manage texture atlas'
-    - Press `CTRL + N` to create a blank texture atlas (All atlas' will be the same size)
-    - Press `CTRL + [` or `CTRL + ]` to navigate between atlas'
-    - Press `CTRL + R` with no sprite selected to rename the current atlas
-    - Press `DELETE` to delete the current atlas
-
 - Camera controls
     - Press `Z` to center camera and reset zoom
     - Middle click or hold `LEFT ALT` and move mouse to pan
@@ -94,7 +88,7 @@ You can find some basic loaders in the [loaders](/loaders) directory, alternativ
 
 #### Q) What does each executable do?
 - lspi - Lxmcf Sprite Packer Inspector - A CLI tool to insect bundles and extract data
-- lspp - Lxmcf Sprite Packer Program - The main application
+- lspb - Lxmcf Sprite Packer Program - The main application
 
 #### Q) Why is the bundle file size larger than the raw images?
 I did use compression on the texture atlas data ([PNG Data](http://www.libpng.org/pub/png/)) however this was removed due to instability hence a large file size, however the bundle will also store some arbitrary [FourCC style](https://en.wikipedia.org/wiki/FourCC) codes to easily identify where an atlas or sprite are in the exported bundle. Data to identify the position of the sprite in the atlas, it's origin point and animation frames are also stored, you can view the [bundle structure](/docs/bundle.md) for more info.
@@ -104,6 +98,14 @@ Very! I have not bench marked anything but I am using [stb rect pack](https://gi
 
 #### Q) What is coming next?
 Not a lot... Or maybe lots; I don't know, you can check the [roadmap](/ROADMAP.md)!
+
+#### Q) What are the types of files in the source directory?
+Good question but I hope they will be self explanatory, the idea was taken from the DOOM source code styling...
+
+- c_*: Core/Engine
+- t_*: Type and its related procedures
+- u_*: Utility
+- p_*: Platform (OS specific code)
 
 #### Q) Are the new sour skittles better than the old ones?
 No :slightly_smiling_face:
